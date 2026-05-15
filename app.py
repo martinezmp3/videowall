@@ -525,6 +525,24 @@ def download_logs():
                      mimetype='text/plain')
 
 
+@app.route('/api/monitor/rename', methods=['POST'])
+@login_required
+def monitor_rename():
+    cfg     = load_config()
+    mon_idx = int(request.form.get('monitor_id', 1)) - 1
+    name    = request.form.get('name', '').strip()
+    if not name:
+        flash('Monitor name cannot be empty.', 'danger')
+        return redirect(url_for('config_page') + '#schedule')
+    try:
+        cfg['monitors'][mon_idx]['name'] = name
+        save_config(cfg)
+        flash(f'Monitor renamed to "{name}".')
+    except IndexError:
+        flash('Invalid monitor.', 'danger')
+    return redirect(url_for('config_page') + '#schedule')
+
+
 # ─── Network management ──────────────────────────────────────────────────────
 ETH_IFACE  = 'enp0s31f6'
 WIFI_IFACE = 'wlp1s0'
@@ -660,6 +678,8 @@ def wifi_connect():
     pw   = request.form.get('password','')
     if not ssid:
         return jsonify({'ok': False, 'msg': 'SSID required'})
+    # Remove any stale saved profile first (prevents "Secrets required" error)
+    subprocess.run(['nmcli','con','delete', ssid], capture_output=True, timeout=5)
     cmd = ['nmcli','dev','wifi','connect', ssid, 'ifname', WIFI_IFACE]
     if pw: cmd += ['password', pw]
     try:

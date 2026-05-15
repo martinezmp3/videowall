@@ -433,6 +433,11 @@ def main():
             playlist_index = build_playlist_index(config)
             geometries     = get_monitor_geometries()
             feh.terminate()
+            if config.get("setup_mode"):
+                log.info("Setup mode active after reload — showing setup screen")
+                show_setup_screen()
+                os.execv(sys.executable, [sys.executable] + sys.argv)
+                return
             for i, mon in enumerate(config.get("monitors", [])):
                 if i >= len(geometries):
                     log.warning(f"Monitor {i+1} not connected, skipping"); continue

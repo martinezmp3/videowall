@@ -257,7 +257,22 @@ footer a:hover{color:#8b949e}
     <div class="tab-pane fade" id="schedule">
       {% for mon_idx, mon in enumerate(cfg.get('monitors',[])) %}
       <div class="card">
-        <div class="card-header">{{ mon.name }} — Schedule</div>
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span id="monlbl-{{ mon_idx }}">{{ mon.name }}</span>
+          <button class="btn btn-outline-secondary btn-xs"
+                  onclick="toggleMonRename({{ mon_idx }}, '{{ mon.name|replace("'","\'") }}')">Rename</button>
+        </div>
+        <div id="monrename-{{ mon_idx }}" style="display:none;padding:.5rem 1rem;background:#1c2128;border-bottom:1px solid #30363d">
+          <form method="post" action="/api/monitor/rename" class="d-flex gap-2 align-items-center">
+            <input type="hidden" name="monitor_id" value="{{ mon_idx+1 }}">
+            <input type="text" name="name" id="moninput-{{ mon_idx }}"
+                   class="form-control form-control-sm" style="max-width:280px"
+                   placeholder="e.g. Front Lobby TV" required>
+            <button type="submit" class="btn btn-primary btn-xs">Save</button>
+            <button type="button" class="btn btn-secondary btn-xs"
+                    onclick="toggleMonRename({{ mon_idx }})">Cancel</button>
+          </form>
+        </div>
         <div class="card-body">
 
           <div class="mb-3 d-flex align-items-center gap-3">
@@ -909,6 +924,18 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const netTab = document.querySelector('a[href="#network"]');
   if (netTab) netTab.addEventListener('shown.bs.tab', loadNetStatus);
 });
+
+function toggleMonRename(idx, currentName) {
+  const box   = document.getElementById('monrename-' + idx);
+  const input = document.getElementById('moninput-'  + idx);
+  const shown = box.style.display !== 'none';
+  box.style.display = shown ? 'none' : 'block';
+  if (!shown && input) {
+    input.value = currentName || '';
+    input.focus();
+    input.select();
+  }
+}
 
 function showResetConfirm() {
   document.getElementById('reset-form').style.display = 'block';
