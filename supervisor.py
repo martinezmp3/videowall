@@ -375,14 +375,58 @@ def main():
         m = MonitorManager(mon, geometries[i], cam_index, playlist_index)
         m.start(); managers.append(m)
 
+    _reload = threading.Event()
+
     def shutdown(sig, frame):
         log.info("Shutting down...")
         for m in managers: m.stop()
         sys.exit(0)
 
+    def on_reload(sig, frame):
+        _reload.set()
+
     signal.signal(signal.SIGTERM, shutdown)
-    signal.signal(signal.SIGINT, shutdown)
-    while True: time.sleep(10)
+    signal.signal(signal.SIGINT,  shutdown)
+    signal.signal(signal.SIGUSR1, on_reload)
+
+    while True:
+        time.sleep(1)
+        if not _reload.is_set():
+            continue
+        _reload.clear()
+        log.info("Reload signal received — reloading config")
+
+        # Show loading screen
+        env = {**os.environ, "DISPLAY": ":0"}
+        feh = subprocess.Popen(
+            ["feh", "--fullscreen", "--auto-zoom", "--borderless",
+             "/opt/videowall/static/loading_screen.png"],
+            env=env
+        )
+        time.sleep(0.6)
+
+        # Stop all camera managers
+        for m in managers:
+            m.stop()
+        managers.clear()
+        time.sleep(0.8)
+
+        # Reload config and restart
+        try:
+            config         = load_config()
+            cam_index      = build_cam_index(config)
+            playlist_index = build_playlist_index(config)
+            geometries     = get_monitor_geometries()
+            feh.terminate()
+            for i, mon in enumerate(config.get("monitors", [])):
+                if i >= len(geometries):
+                    log.warning(f"Monitor {i+1} not connected, skipping"); continue
+                m = MonitorManager(mon, geometries[i], cam_index, playlist_index)
+                m.start(); managers.append(m)
+            log.info("Reload complete")
+        except Exception as e:
+            log.error(f"Reload failed: {e}")
+            feh.terminate()
 
 if __name__ == "__main__":
     main()

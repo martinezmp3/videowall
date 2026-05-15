@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import os, re, io, subprocess, socket, yaml, psutil, hashlib, secrets, json, smtplib, threading
+import os, re, io, signal as _signal, subprocess, socket, yaml, psutil, hashlib, secrets, json, smtplib, threading
 from pathlib import Path
 from datetime import datetime
 from email.mime.text import MIMEText
@@ -91,6 +91,22 @@ def logout():
     session.clear(); return redirect(url_for('login'))
 
 # ── Pages ─────────────────────────────────────────────────
+def reload_display():
+    """Send SIGUSR1 to the supervisor for a live reload (no Xorg restart).
+    Falls back to full service restart if the PID cannot be found."""
+    try:
+        r = subprocess.run(
+            ['systemctl', 'show', '-p', 'MainPID', '--value', 'videowall-display'],
+            capture_output=True, text=True)
+        pid = int(r.stdout.strip())
+        if pid > 0:
+            _signal.kill(pid, _signal.SIGUSR1)
+            return
+    except Exception:
+        pass
+    reload_display()
+
+
 @app.route('/')
 @login_required
 def dashboard():
@@ -191,7 +207,7 @@ def step_update():
             step['cameras']  = request.form.getlist('cameras')
             break
     save_config(cfg); flash('Step saved')
-    subprocess.run(['systemctl','restart','videowall-display'],check=False)
+    reload_display()
     return redirect(url_for('config_page')+'#playlists')
 
 @app.route('/api/playlist/step/delete', methods=['POST'])
@@ -205,7 +221,7 @@ def step_delete():
             except IndexError: pass
             break
     save_config(cfg); flash('Step removed')
-    subprocess.run(['systemctl','restart','videowall-display'],check=False)
+    reload_display()
     return redirect(url_for('config_page')+'#playlists')
 
 @app.route('/api/playlist/step/move', methods=['POST'])
@@ -223,7 +239,7 @@ def step_move():
                 rot[step_idx+1],rot[step_idx]=rot[step_idx],rot[step_idx+1]
             break
     save_config(cfg)
-    subprocess.run(['systemctl','restart','videowall-display'],check=False)
+    reload_display()
     return redirect(url_for('config_page')+'#playlists')
 
 # ── Schedule ──────────────────────────────────────────────
@@ -241,7 +257,7 @@ def schedule_add():
     try:
         cfg['monitors'][mon_idx].setdefault('schedule',[]).append(rule)
         save_config(cfg); flash('Schedule rule added')
-        subprocess.run(['systemctl','restart','videowall-display'],check=False)
+        reload_display()
     except IndexError: flash('Invalid monitor')
     return redirect(url_for('config_page')+'#schedule')
 
@@ -254,7 +270,7 @@ def schedule_delete():
     try:
         del cfg['monitors'][mon_idx]['schedule'][rule_idx]
         save_config(cfg); flash('Rule removed')
-        subprocess.run(['systemctl','restart','videowall-display'],check=False)
+        reload_display()
     except IndexError: flash('Invalid index')
     return redirect(url_for('config_page')+'#schedule')
 
@@ -265,7 +281,7 @@ def schedule_set_default():
     try:
         cfg['monitors'][mon_idx]['default_playlist'] = request.form.get('playlist','')
         save_config(cfg); flash('Default playlist updated')
-        subprocess.run(['systemctl','restart','videowall-display'],check=False)
+        reload_display()
     except IndexError: flash('Invalid monitor')
     return redirect(url_for('config_page')+'#schedule')
 
@@ -286,7 +302,7 @@ def system_save():
 @app.route('/api/restart', methods=['POST'])
 @login_required
 def restart():
-    subprocess.run(['systemctl','restart','videowall-display'],check=False)
+    reload_display()
     return jsonify({'ok':True})
 
 @app.route('/api/reboot', methods=['POST'])
@@ -348,7 +364,7 @@ def camera_update():
             if url_changed:
                 threading.Thread(target=take_snap_bg, args=(cam_id, new_url), daemon=True).start()
             flash(f"Camera '{cam['name']}' updated")
-            subprocess.run(['systemctl','restart','videowall-display'], check=False)
+            reload_display()
             break
     return redirect(url_for('config_page')+'#cameras')
 
@@ -367,7 +383,7 @@ def schedule_update():
         rule['end']      = request.form.get('end', rule['end'])
         save_config(cfg)
         flash('Schedule rule updated')
-        subprocess.run(['systemctl','restart','videowall-display'], check=False)
+        reload_display()
     except IndexError:
         flash('Invalid rule')
     return redirect(url_for('config_page')+'#schedule')
@@ -416,7 +432,7 @@ def backup_restore():
         # Remove setup_mode if present in backup
         data.pop('setup_mode', None)
         save_config(data)
-        subprocess.Popen(['bash', '-c', 'sleep 1 && systemctl restart videowall-display'])
+        threading.Timer(1.0, reload_display).start()
         flash('Configuration restored successfully. Display restarting...', 'success')
     except Exception as e:
         flash(f'Restore failed: {e}', 'danger')
@@ -450,7 +466,7 @@ def factory_reset():
     subprocess.Popen(['bash', '-c', ap_cmd])
 
     # Restart display service so supervisor picks up setup_mode
-    subprocess.Popen(['bash', '-c', 'sleep 1 && systemctl restart videowall-display'])
+    threading.Timer(1.0, reload_display).start()
 
     session.clear()
     return redirect(url_for('login') + '?reset=1')

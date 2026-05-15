@@ -60,33 +60,11 @@ cameras:
   url: rtsp://192.168.86.233:7447/yVsSNP2aho4eTc5p
   use_substream: false
 monitors:
-- default_playlist: pl_business
+- default_playlist: alldayallcameras
   id: 1
   name: Monitor 1
-  schedule:
-  - days:
-    - mon
-    - tue
-    - wed
-    - thu
-    - fri
-    end: '20:00'
-    name: Business Hours
-    playlist: pl_business
-    start: 08:00
-  - days:
-    - mon
-    - tue
-    - wed
-    - thu
-    - fri
-    - sat
-    - sun
-    end: 08:00
-    name: Night Mode
-    playlist: pl_night
-    start: '20:00'
-- default_playlist: ''
+  schedule: []
+- default_playlist: pl_night
   id: 2
   name: Monitor 2 (Laptop)
   schedule: []
@@ -156,6 +134,29 @@ playlists:
     duration: 0
     layout: feat8
     name: All Cameras
+- id: alldayallcameras
+  name: All cámaras all day
+  rotation:
+  - name: All cameras
+    layout: 16
+    duration: 0
+    cameras:
+    - cam_driveway
+    - cam_frontdoor
+    - cam_backyard
+    - cam_trash
+    - doorbellcam
+    - drivewaytop
+    - frontyard
+    - garage
+    - rickycam
+    - jorgitocam
+    - cam_driveway
+    - cam_frontdoor
+    - cam_backyard
+    - cam_trash
+    - doorbellcam
+    - drivewaytop
 system:
   admin_password_hash: 8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918
   alert_email_from: ''
