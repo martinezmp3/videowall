@@ -76,8 +76,8 @@ footer a:hover{color:#8b949e}
         {% for cam in cfg.get('cameras',[]) %}
         <div class="col-6 col-md-4 col-lg-3">
           <div class="cam-card">
-            <img src="/static/snapshots/{{ cam.id }}.jpg" id="snap-{{ cam.id }}"
-                 onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%230d1117%22 width=%22200%22 height=%22120%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 fill=%22%2330363d%22 font-size=%2213%22 text-anchor=%22middle%22 dy=%22.3em%22%3ENo snapshot%3C/text%3E%3C/svg%3E'">
+            <img src="/static/snapshots/{{ cam.id }}.jpg" id="snap-{{ cam.id }}" data-cam="{{ cam.id }}"
+                 onerror="autoSnap(this)">
             <div class="cam-overlay">
               <span class="overlay-btn" onclick="refreshSnap('{{ cam.id }}')">&#x21bb;</span>
               <span class="overlay-btn" onclick="openCamEdit('{{ cam.id }}','{{ cam.name }}','{{ cam.url }}','{{ cam.substream or '' }}','{{ cam.use_substream }}')">Edit</span>
@@ -454,6 +454,29 @@ function openRuleEdit(monId, ruleIdx, name, playlist, days, start, end){
     document.getElementById('edit_day_'+d).checked = days.includes(d);
   });
   new bootstrap.Modal(document.getElementById('ruleEditModal')).show();
+}
+
+
+// Auto-trigger snapshot when image is missing (e.g. right after adding a camera)
+const _pendingSnaps = new Set();
+function autoSnap(img) {
+  const PLACEHOLDER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='120'%3E%3Crect fill='%230d1117' width='200' height='120'/%3E%3Ctext x='50%25' y='50%25' fill='%2330363d' font-size='13' text-anchor='middle' dy='.3em'%3ECapturing...%3C/text%3E%3C/svg%3E";
+  img.src = PLACEHOLDER;
+  const id = img.getAttribute('data-cam');
+  if (!id || _pendingSnaps.has(id)) return;
+  _pendingSnaps.add(id);
+  // Small stagger so multiple missing cameras don't all fire at once
+  const delay = _pendingSnaps.size * 1500;
+  setTimeout(() => {
+    fetch('/api/snapshot/' + id, {method: 'POST'})
+      .then(r => r.json())
+      .then(d => {
+        _pendingSnaps.delete(id);
+        const el = document.getElementById('snap-' + id);
+        if (el && d.ok) { el.src = d.url; }
+      })
+      .catch(() => _pendingSnaps.delete(id));
+  }, delay);
 }
 
 function testEmail(){
