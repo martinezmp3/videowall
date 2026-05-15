@@ -10,36 +10,43 @@ cameras:
   url: rtsp://192.168.86.233:7447/d9eh8leuMKC5718t
   substream: rtsp://192.168.86.233:7447/PbwGrj1UkxmoQk0F
   use_substream: false
+  fill_mode: stretch
 - id: cam_frontdoor
   name: Front Door
   url: rtsp://192.168.86.233:7447/LqWilAyQefPYMtZw
   substream: rtsp://192.168.86.233:7447/8rFAf4Y7OUsjEHc0
   use_substream: false
+  fill_mode: stretch
 - id: cam_backyard
   name: Back Yard
   url: rtsp://192.168.86.233:7447/eH1LEipmsDmwRX5P
   substream: rtsp://192.168.86.233:7447/XJPkRfWN4t6XPeQI
   use_substream: false
+  fill_mode: stretch
 - id: cam_trash
   name: Trash
   url: rtsp://192.168.86.233:7447/HInhAyRnFaGR0tc5
   substream: rtsp://192.168.86.233:7447/AkM4O6ZWS0vx23jq
   use_substream: false
+  fill_mode: stretch
 - id: doorbellcam
   name: Door Bell
   url: rtsp://192.168.86.233:7447/KL2T8P4SrrM0AItL
   substream: rtsp://192.168.86.233:7447/EAC08ZaUhojOLCgw
   use_substream: false
+  fill_mode: stretch
 - id: drivewaytop
   name: Drive top view
   url: rtsp://192.168.86.233:7447/aWRz5wBgIrCvilVe
   substream: rtsp://192.168.86.233:7447/JgCxNHmVrjrnKbOy
   use_substream: false
+  fill_mode: stretch
 - id: frontyard
   name: Front Yard
   url: rtsp://192.168.86.233:7447/jJXGzLQ2PGw1jk3z
   substream: rtsp://192.168.86.233:7447/LUlolhxFqSbRxpk8
   use_substream: false
+  fill_mode: stretch
 playlists:
 - id: pl_business
   name: Business Hours
@@ -89,13 +96,15 @@ playlists:
   name: Night Mode
   rotation:
   - name: All Cameras
-    layout: 4
+    layout: 6
     duration: 0
     cameras:
     - cam_driveway
     - cam_frontdoor
     - cam_backyard
     - cam_trash
+    - drivewaytop
+    - frontyard
 monitors:
 - id: 1
   name: Monitor 1

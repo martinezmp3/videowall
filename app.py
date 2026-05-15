@@ -109,7 +109,8 @@ def camera_add():
     cam_id = request.form.get('cam_id','').strip().replace(' ','_').lower()
     cam = {'id':cam_id,'name':request.form.get('cam_name','').strip(),
            'url':request.form.get('cam_url','').strip(),
-           'substream':request.form.get('cam_sub','').strip(),'use_substream':False}
+           'substream':request.form.get('cam_sub','').strip(),'use_substream':False,
+           'fill_mode': request.form.get('cam_fill','stretch')}
     if not cam_id or not cam['url']:
         flash('Camera ID and URL are required')
     elif any(c['id']==cam_id for c in cfg.get('cameras',[])):
@@ -340,6 +341,7 @@ def camera_update():
             url_changed      = new_url != cam['url']
             cam['url']       = new_url
             cam['substream'] = request.form.get('cam_sub', cam.get('substream','')).strip()
+            cam['fill_mode'] = request.form.get('cam_fill', cam.get('fill_mode','stretch'))
             save_config(cfg)
             if url_changed:
                 threading.Thread(target=take_snap_bg, args=(cam_id, new_url), daemon=True).start()

@@ -95,6 +95,13 @@ def grid_positions(monitor, layout, num_cameras):
 def launch_mpv(cam, pos):
     url = cam_url(cam)
     geo = f"{pos['w']}x{pos['h']}+{pos['x']}+{pos['y']}"
+    fill_mode = cam.get('fill_mode', 'stretch')
+    fill_flags = []
+    if fill_mode == 'stretch':
+        fill_flags = ['--keepaspect=no']
+    elif fill_mode == 'zoom':
+        fill_flags = ['--keepaspect=yes', '--panscan=1.0']
+    # fit = default, no extra flags needed
     cmd = [
         "mpv", url, f"--geometry={geo}",
         "--no-border","--no-osc","--no-input-default-bindings",
@@ -102,7 +109,7 @@ def launch_mpv(cam, pos):
         "--profile=low-latency","--rtsp-transport=tcp",
         "--demuxer-readahead-secs=0","--cache=no",
         f"--title={cam['name']}","--ontop","--really-quiet",
-    ]
+    ] + fill_flags
     env = {**os.environ,"DISPLAY":":0","LIBVA_DRIVER_NAME":"iHD"}
     proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
     log.info(f"MPV: {cam['name']} @ {geo} PID={proc.pid}")

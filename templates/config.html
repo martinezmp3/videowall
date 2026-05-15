@@ -80,7 +80,7 @@ footer a:hover{color:#8b949e}
                  onerror="autoSnap(this)">
             <div class="cam-overlay">
               <span class="overlay-btn" onclick="refreshSnap('{{ cam.id }}')">&#x21bb;</span>
-              <span class="overlay-btn" onclick="openCamEdit('{{ cam.id }}','{{ cam.name }}','{{ cam.url }}','{{ cam.substream or '' }}','{{ cam.use_substream }}')">Edit</span>
+              <span class="overlay-btn" onclick="openCamEdit('{{ cam.id }}','{{ cam.name }}','{{ cam.url }}','{{ cam.substream or '' }}','{{ cam.use_substream }}','{{ cam.get("fill_mode","stretch") }}')">Edit</span>
             </div>
             <div class="cam-info">
               <div class="cam-name">{{ cam.name }}</div>
@@ -92,6 +92,12 @@ footer a:hover{color:#8b949e}
                 </span>
               </div>
               {% endif %}
+              <div class="mt-1">
+                {% set fm = cam.get('fill_mode','stretch') %}
+                <span class="badge bg-secondary" style="font-size:.62rem">
+                  {{ {'fit':'Fit (bars)','stretch':'Stretch','zoom':'Zoom/Crop'}.get(fm, fm) }}
+                </span>
+              </div>
               <div class="mt-2 d-flex gap-1 flex-wrap">
                 {% if cam.substream %}
                 <form method="post" action="/api/camera/toggle-sub" style="display:inline">
@@ -116,8 +122,16 @@ footer a:hover{color:#8b949e}
           <div class="col-md-2"><label>ID (no spaces)</label><input name="cam_id" class="form-control form-control-sm" placeholder="cam_entrance" required></div>
           <div class="col-md-2"><label>Display Name</label><input name="cam_name" class="form-control form-control-sm" placeholder="Entrance" required></div>
           <div class="col-md-3"><label>Main Stream (high res)</label><input name="cam_url" class="form-control form-control-sm" placeholder="rtsp://..." required></div>
-          <div class="col-md-3"><label>Sub Stream (low res, optional)</label><input name="cam_sub" class="form-control form-control-sm" placeholder="rtsp://..."></div>
-          <div class="col-md-2 d-flex align-items-end"><button class="btn btn-success btn-sm w-100">Add &amp; Snapshot</button></div>
+          <div class="col-md-2"><label>Sub Stream (low res, optional)</label><input name="cam_sub" class="form-control form-control-sm" placeholder="rtsp://..."></div>
+          <div class="col-md-2">
+            <label>Fill Mode</label>
+            <select name="cam_fill" class="form-select form-select-sm">
+              <option value="stretch">Stretch</option>
+              <option value="zoom">Zoom/Crop</option>
+              <option value="fit">Fit (bars)</option>
+            </select>
+          </div>
+          <div class="col-md-1 d-flex align-items-end"><button class="btn btn-success btn-sm w-100">Add</button></div>
         </div>
       </form>
     </div>
@@ -332,6 +346,15 @@ footer a:hover{color:#8b949e}
               <label>Sub Stream URL (low res, optional)</label>
               <input name="cam_sub" id="edit_cam_sub" class="form-control" placeholder="rtsp://... or leave blank">
             </div>
+            <div class="col-md-6">
+              <label>Fill Mode</label>
+              <select name="cam_fill" id="edit_cam_fill" class="form-select">
+                <option value="stretch">Stretch — fill cell, may distort slightly</option>
+                <option value="zoom">Zoom / Crop — fill cell, crops edges, no distortion</option>
+                <option value="fit">Fit — keep aspect ratio, black bars</option>
+              </select>
+              <small class="text-muted">Controls how the video fills its grid cell</small>
+            </div>
           </div>
           <div class="mt-3">
             <div class="text-muted" style="font-size:.8rem">Camera ID: <code id="edit_cam_id_display" style="color:#58a6ff"></code> — cannot be changed</div>
@@ -432,12 +455,13 @@ function refreshSnap(id){
 }
 
 // Open camera edit modal, pre-filled
-function openCamEdit(id, name, url, sub, useSub){
-  document.getElementById('edit_cam_id').value         = id;
+function openCamEdit(id, name, url, sub, useSub, fillMode){
+  document.getElementById('edit_cam_id').value              = id;
   document.getElementById('edit_cam_id_display').textContent = id;
-  document.getElementById('edit_cam_name').value        = name;
-  document.getElementById('edit_cam_url').value         = url;
-  document.getElementById('edit_cam_sub').value         = sub;
+  document.getElementById('edit_cam_name').value             = name;
+  document.getElementById('edit_cam_url').value              = url;
+  document.getElementById('edit_cam_sub').value              = sub;
+  document.getElementById('edit_cam_fill').value             = fillMode || 'stretch';
   new bootstrap.Modal(document.getElementById('camEditModal')).show();
 }
 
