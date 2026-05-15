@@ -80,6 +80,8 @@ def get_monitor_geometries():
                 monitors.append({'w':w,'h':h,'x':x,'y':y})
             except Exception as e:
                 log.warning(f"Cannot parse monitor: {line} — {e}")
+    # Sort left-to-right so Monitor 1 in config = leftmost physical screen
+    monitors.sort(key=lambda m: (m['x'], m['y']))
     return monitors
 
 def grid_positions(monitor, layout, num_cameras):

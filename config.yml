@@ -1,96 +1,118 @@
-system:
-  admin_password_hash: 8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918
-  alert_email_from: ''
-  alert_email_to: ''
-  gmail_app_password: ''
-  watchdog_interval: 30
 cameras:
-- id: cam_driveway
+- fill_mode: stretch
+  id: cam_driveway
   name: Driveway
-  url: rtsp://192.168.86.233:7447/d9eh8leuMKC5718t
   substream: rtsp://192.168.86.233:7447/PbwGrj1UkxmoQk0F
+  url: rtsp://192.168.86.233:7447/d9eh8leuMKC5718t
   use_substream: false
-  fill_mode: stretch
-- id: cam_frontdoor
+- fill_mode: stretch
+  id: cam_frontdoor
   name: Front Door
-  url: rtsp://192.168.86.233:7447/LqWilAyQefPYMtZw
   substream: rtsp://192.168.86.233:7447/8rFAf4Y7OUsjEHc0
+  url: rtsp://192.168.86.233:7447/LqWilAyQefPYMtZw
   use_substream: false
-  fill_mode: stretch
-- id: cam_backyard
+- fill_mode: stretch
+  id: cam_backyard
   name: Back Yard
-  url: rtsp://192.168.86.233:7447/eH1LEipmsDmwRX5P
   substream: rtsp://192.168.86.233:7447/XJPkRfWN4t6XPeQI
+  url: rtsp://192.168.86.233:7447/eH1LEipmsDmwRX5P
   use_substream: false
-  fill_mode: stretch
-- id: cam_trash
+- fill_mode: stretch
+  id: cam_trash
   name: Trash
-  url: rtsp://192.168.86.233:7447/HInhAyRnFaGR0tc5
   substream: rtsp://192.168.86.233:7447/AkM4O6ZWS0vx23jq
+  url: rtsp://192.168.86.233:7447/HInhAyRnFaGR0tc5
   use_substream: false
-  fill_mode: stretch
-- id: doorbellcam
+- fill_mode: stretch
+  id: doorbellcam
   name: Door Bell
-  url: rtsp://192.168.86.233:7447/KL2T8P4SrrM0AItL
   substream: rtsp://192.168.86.233:7447/EAC08ZaUhojOLCgw
+  url: rtsp://192.168.86.233:7447/KL2T8P4SrrM0AItL
   use_substream: false
-  fill_mode: stretch
-- id: drivewaytop
+- fill_mode: stretch
+  id: drivewaytop
   name: Drive top view
-  url: rtsp://192.168.86.233:7447/aWRz5wBgIrCvilVe
   substream: rtsp://192.168.86.233:7447/JgCxNHmVrjrnKbOy
+  url: rtsp://192.168.86.233:7447/aWRz5wBgIrCvilVe
   use_substream: false
-  fill_mode: stretch
-- id: frontyard
+- fill_mode: stretch
+  id: frontyard
   name: Front Yard
-  url: rtsp://192.168.86.233:7447/jJXGzLQ2PGw1jk3z
   substream: rtsp://192.168.86.233:7447/LUlolhxFqSbRxpk8
+  url: rtsp://192.168.86.233:7447/jJXGzLQ2PGw1jk3z
   use_substream: false
-  fill_mode: stretch
-- id: garage
+- fill_mode: stretch
+  id: garage
   name: Garage
-  url: rtsp://192.168.86.233:7447/Y77hMpUmD2Jvn2xv
   substream: rtsp://192.168.86.233:7447/a5x3X1FIDyQGoBBj
+  url: rtsp://192.168.86.233:7447/Y77hMpUmD2Jvn2xv
   use_substream: false
-  fill_mode: stretch
-- id: rickycam
+- fill_mode: stretch
+  id: rickycam
   name: Ricky
-  url: rtsp://192.168.86.233:7447/XAWR9azg6Ek0Sfhq
   substream: rtsp://192.168.86.233:7447/FdDeUreay23q5rUO
+  url: rtsp://192.168.86.233:7447/XAWR9azg6Ek0Sfhq
   use_substream: false
-  fill_mode: stretch
-- id: jorgitocam
+- fill_mode: stretch
+  id: jorgitocam
   name: Jorgito
-  url: rtsp://192.168.86.233:7447/yVsSNP2aho4eTc5p
   substream: rtsp://192.168.86.233:7447/kKWWuImMfFk1ddma
+  url: rtsp://192.168.86.233:7447/yVsSNP2aho4eTc5p
   use_substream: false
-  fill_mode: stretch
+monitors:
+- default_playlist: pl_business
+  id: 1
+  name: Monitor 1
+  schedule:
+  - days:
+    - mon
+    - tue
+    - wed
+    - thu
+    - fri
+    end: '20:00'
+    name: Business Hours
+    playlist: pl_business
+    start: 08:00
+  - days:
+    - mon
+    - tue
+    - wed
+    - thu
+    - fri
+    - sat
+    - sun
+    end: 08:00
+    name: Night Mode
+    playlist: pl_night
+    start: '20:00'
+- default_playlist: ''
+  id: 2
+  name: Monitor 2 (Laptop)
+  schedule: []
 playlists:
 - id: pl_business
   name: Business Hours
   rotation:
-  - name: Driveway
-    layout: 1
-    duration: 5
-    cameras:
+  - cameras:
     - cam_driveway
-  - name: Quad View
-    layout: 4
-    duration: 10
-    cameras:
+    duration: 5
+    layout: 1
+    name: Driveway
+  - cameras:
     - cam_driveway
     - cam_frontdoor
     - cam_backyard
     - cam_trash
-  - name: Front Door
-    layout: 1
-    duration: 5
-    cameras:
+    duration: 10
+    layout: 4
+    name: Quad View
+  - cameras:
     - cam_frontdoor
-  - name: Back Yard
-    layout: 3L4S
     duration: 5
-    cameras:
+    layout: 1
+    name: Front Door
+  - cameras:
     - cam_driveway
     - cam_backyard
     - rickycam
@@ -98,31 +120,31 @@ playlists:
     - drivewaytop
     - doorbellcam
     - garage
-  - name: Quad View Long
-    layout: 4
-    duration: 30
-    cameras:
+    duration: 5
+    layout: 3L4S
+    name: Back Yard
+  - cameras:
     - cam_driveway
     - cam_frontdoor
     - cam_backyard
     - cam_trash
-  - name: Trash
-    layout: 1
-    duration: 5
-    cameras:
+    duration: 30
+    layout: 4
+    name: Quad View Long
+  - cameras:
     - cam_trash
-  - name: DoorBell
+    duration: 5
     layout: 1
-    duration: 10
-    cameras:
+    name: Trash
+  - cameras:
     - doorbellcam
+    duration: 10
+    layout: 1
+    name: DoorBell
 - id: pl_night
   name: Night Mode
   rotation:
-  - name: All Cameras
-    layout: feat8
-    duration: 0
-    cameras:
+  - cameras:
     - cam_driveway
     - cam_frontdoor
     - frontyard
@@ -131,30 +153,12 @@ playlists:
     - drivewaytop
     - doorbellcam
     - rickycam
-monitors:
-- id: 1
-  name: Monitor 1
-  default_playlist: pl_business
-  schedule:
-  - name: Business Hours
-    playlist: pl_business
-    days:
-    - mon
-    - tue
-    - wed
-    - thu
-    - fri
-    start: 08:00
-    end: '20:00'
-  - name: Night Mode
-    playlist: pl_night
-    days:
-    - mon
-    - tue
-    - wed
-    - thu
-    - fri
-    - sat
-    - sun
-    start: '20:00'
-    end: 08:00
+    duration: 0
+    layout: feat8
+    name: All Cameras
+system:
+  admin_password_hash: 8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918
+  alert_email_from: ''
+  alert_email_to: ''
+  gmail_app_password: ''
+  watchdog_interval: 30

@@ -3,7 +3,7 @@ export DISPLAY=:0
 export LIBVA_DRIVER_NAME=iHD
 export LIBVA_DRI3_DISABLE=1
 
-# ── Wait for Xorg to be ready ─────────────────────────────────────────────────
+# ── Start Xorg and wait for it to be ready ────────────────────────────────────
 for i in $(seq 1 20); do
     if ! pgrep -x Xorg > /dev/null; then
         Xorg :0 -nolisten tcp vt1 &
@@ -18,41 +18,55 @@ for i in $(seq 1 20); do
     sleep 3
 done
 
+# Give GPU/driver a moment to detect all connected outputs after X starts
+sleep 3
+
 # ── Configure displays ────────────────────────────────────────────────────────
-# Detect all connected external outputs (HDMI and DisplayPort)
-EXTERNALS=()
+# Wait up to 15s for at least one external display to appear
+for i in $(seq 1 15); do
+    EXT_COUNT=$(xrandr | grep " connected" | grep -cv "^eDP" || true)
+    [ "$EXT_COUNT" -gt 0 ] && break
+    echo "Waiting for external display detection... ($i)"
+    sleep 1
+done
+
+# Build layout: external monitors first (left→right), laptop screen last
+X_OFFSET=0
+FIRST=1
+
 while IFS= read -r line; do
-    output=$(echo "$line" | awk '{print $1}')
-    # Skip laptop built-in screen (eDP)
-    if [[ "$output" != eDP* ]]; then
-        EXTERNALS+=("$output")
+    OUTPUT=$(echo "$line" | awk '{print $1}')
+    PREF=$(xrandr | grep -A1 "^${OUTPUT} connected" | tail -1 | awk '{print $1}')
+    [ -z "$PREF" ] && continue
+    W=$(echo "$PREF" | cut -dx -f1)
+    echo "External: $OUTPUT  ${PREF}  pos=${X_OFFSET}x0"
+    if [ "$FIRST" -eq 1 ]; then
+        xrandr --output "$OUTPUT" --mode "$PREF" --pos "${X_OFFSET}x0" --primary
+        FIRST=0
+    else
+        xrandr --output "$OUTPUT" --mode "$PREF" --pos "${X_OFFSET}x0"
     fi
+    X_OFFSET=$((X_OFFSET + W))
 done < <(xrandr | grep " connected" | grep -v "^eDP")
 
-if [ ${#EXTERNALS[@]} -gt 0 ]; then
-    echo "External displays found: ${EXTERNALS[*]}"
-    # Enable each external display in sequence, starting at x=0
-    X_OFFSET=0
-    FIRST=1
-    for OUTPUT in "${EXTERNALS[@]}"; do
-        # Get the preferred (first listed) resolution for this output
-        PREF=$(xrandr | grep -A1 "^${OUTPUT} connected" | tail -1 | awk '{print $1}')
-        W=$(echo "$PREF" | cut -dx -f1)
-        echo "Enabling $OUTPUT at ${PREF} (+${X_OFFSET}+0)"
-        if [ "$FIRST" -eq 1 ]; then
-            xrandr --output "$OUTPUT" --mode "$PREF" --rate 60.00 --pos "${X_OFFSET}x0" --primary
-            FIRST=0
-        else
-            xrandr --output "$OUTPUT" --mode "$PREF" --pos "${X_OFFSET}x0"
-        fi
-        X_OFFSET=$((X_OFFSET + W))
-    done
-    # Push laptop screen off to the right (out of camera area) or turn it off
-    xrandr --output eDP-1 --off 2>/dev/null || true
-else
-    echo "No external display found — using built-in screen"
-    xrandr --output eDP-1 --auto --primary
+# Laptop built-in: add after externals (or use as primary if none found)
+EDP=$(xrandr | grep "^eDP" | awk '{print $1}' | head -1)
+if [ -n "$EDP" ]; then
+    EDP_PREF=$(xrandr | grep -A1 "^${EDP} connected" | tail -1 | awk '{print $1}')
+    if [ "$FIRST" -eq 1 ]; then
+        echo "No external found — using built-in $EDP as primary"
+        xrandr --output "$EDP" --mode "$EDP_PREF" --pos "0x0" --primary
+    else
+        echo "Built-in: $EDP  ${EDP_PREF}  pos=${X_OFFSET}x0"
+        xrandr --output "$EDP" --mode "$EDP_PREF" --pos "${X_OFFSET}x0"
+    fi
 fi
+
+# Let xrandr changes settle before supervisor reads monitor layout
+sleep 2
+
+echo "Final monitor layout:"
+xrandr --listmonitors
 
 # ── Desktop cleanup ───────────────────────────────────────────────────────────
 xset s off
