@@ -47,6 +47,24 @@ cameras:
   substream: rtsp://192.168.86.233:7447/LUlolhxFqSbRxpk8
   use_substream: false
   fill_mode: stretch
+- id: garage
+  name: Garage
+  url: rtsp://192.168.86.233:7447/Y77hMpUmD2Jvn2xv
+  substream: rtsp://192.168.86.233:7447/a5x3X1FIDyQGoBBj
+  use_substream: false
+  fill_mode: stretch
+- id: rickycam
+  name: Ricky
+  url: rtsp://192.168.86.233:7447/XAWR9azg6Ek0Sfhq
+  substream: rtsp://192.168.86.233:7447/FdDeUreay23q5rUO
+  use_substream: false
+  fill_mode: stretch
+- id: jorgitocam
+  name: Jorgito
+  url: rtsp://192.168.86.233:7447/yVsSNP2aho4eTc5p
+  substream: rtsp://192.168.86.233:7447/kKWWuImMfFk1ddma
+  use_substream: false
+  fill_mode: stretch
 playlists:
 - id: pl_business
   name: Business Hours
@@ -56,11 +74,6 @@ playlists:
     duration: 5
     cameras:
     - cam_driveway
-  - name: Front Door
-    layout: 1
-    duration: 5
-    cameras:
-    - cam_frontdoor
   - name: Quad View
     layout: 4
     duration: 10
@@ -69,16 +82,16 @@ playlists:
     - cam_frontdoor
     - cam_backyard
     - cam_trash
+  - name: Front Door
+    layout: 1
+    duration: 5
+    cameras:
+    - cam_frontdoor
   - name: Back Yard
     layout: 1
     duration: 5
     cameras:
     - cam_backyard
-  - name: Trash
-    layout: 1
-    duration: 5
-    cameras:
-    - cam_trash
   - name: Quad View Long
     layout: 4
     duration: 30
@@ -86,6 +99,11 @@ playlists:
     - cam_driveway
     - cam_frontdoor
     - cam_backyard
+    - cam_trash
+  - name: Trash
+    layout: 1
+    duration: 5
+    cameras:
     - cam_trash
   - name: DoorBell
     layout: 1
@@ -96,15 +114,18 @@ playlists:
   name: Night Mode
   rotation:
   - name: All Cameras
-    layout: 6
+    layout: 9
     duration: 0
     cameras:
     - cam_driveway
     - cam_frontdoor
     - cam_backyard
     - cam_trash
+    - doorbellcam
     - drivewaytop
     - frontyard
+    - rickycam
+    - jorgitocam
 monitors:
 - id: 1
   name: Monitor 1
