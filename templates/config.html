@@ -2,80 +2,89 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>VideoWall Config</title>
+<title>Config — VideoWall</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
 <style>
-body{background:#0d1117;color:#e6edf3;font-family:system-ui,sans-serif}
+body{background:#0d1117;color:#e6edf3;font-family:system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column}
 .navbar{background:#161b22!important;border-bottom:1px solid #30363d}
-.card{background:#161b22;border:1px solid #30363d;color:#e6edf3;margin-bottom:1.2rem}
-.card-header{background:#1c2128;border-bottom:1px solid #30363d;font-weight:600}
-.form-control,.form-select{background:#0d1117;color:#e6edf3;border-color:#30363d}
+.card{background:#161b22;border:1px solid #30363d;color:#e6edf3;margin-bottom:1rem}
+.card-header{background:#1c2128;border-bottom:1px solid #30363d;font-weight:600;font-size:.88rem}
+.nav-tabs{border-bottom:1px solid #30363d}
+.nav-tabs .nav-link{color:#8b949e;border:none;border-bottom:2px solid transparent;padding:.5rem 1.1rem;font-size:.88rem;background:none}
+.nav-tabs .nav-link:hover{color:#e6edf3;border-color:transparent}
+.nav-tabs .nav-link.active{color:#58a6ff;border-bottom:2px solid #58a6ff;background:none}
+.form-control,.form-select{background:#0d1117;color:#e6edf3;border:1px solid #30363d;font-size:.85rem}
 .form-control:focus,.form-select:focus{background:#0d1117;color:#e6edf3;border-color:#58a6ff;box-shadow:none}
-.cam-card{background:#1c2128;border:1px solid #30363d;border-radius:8px;padding:0;overflow:hidden;position:relative}
-.cam-card img{width:100%;height:130px;object-fit:cover;background:#0d1117;display:block}
-.cam-card .cam-info{padding:.6rem}
-.cam-card .cam-name{font-weight:600;font-size:.9rem}
-.cam-card .cam-url{color:#8b949e;font-size:.7rem;word-break:break-all}
-.snap-badge{position:absolute;top:6px;right:6px}
-.step-card{background:#1c2128;border:1px solid #30363d;border-radius:8px;padding:.9rem;margin-bottom:.7rem}
-.step-card .cam-thumb{width:60px;height:40px;object-fit:cover;border-radius:4px;background:#0d1117;border:1px solid #30363d}
-.step-card .cam-slot{display:inline-block;margin:2px}
-.badge-sub{background:#b08800;font-size:.65rem}
-.badge-main{background:#1a5c38;font-size:.65rem}
-label{color:#8b949e;font-size:.82rem;margin-bottom:.2rem}
-.section-title{color:#58a6ff;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.8rem;font-weight:600}
+label{color:#8b949e;font-size:.78rem;margin-bottom:.2rem;display:block}
+.cam-card{background:#1c2128;border:1px solid #30363d;border-radius:8px;overflow:hidden;position:relative;height:100%}
+.cam-card img{width:100%;height:120px;object-fit:cover;display:block;background:#0d1117}
+.cam-info{padding:.6rem}
+.cam-name{font-weight:600;font-size:.85rem}
+.cam-url{color:#8b949e;font-size:.68rem;word-break:break-all;margin-top:.2rem}
+.snap-btn{position:absolute;top:5px;right:5px;background:rgba(0,0,0,.6);border:1px solid #30363d;color:#e6edf3;font-size:.65rem;padding:2px 6px;border-radius:4px;cursor:pointer}
+.step-block{background:#1c2128;border:1px solid #30363d;border-radius:8px;padding:.9rem;margin-bottom:.7rem}
+.cam-thumb{width:56px;height:38px;object-fit:cover;border-radius:4px;background:#0d1117;border:1px solid #30363d;display:inline-block;vertical-align:middle}
+.schedule-rule{background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:.75rem;margin-bottom:.6rem}
+.day-check .form-check-label{font-size:.78rem}
+.badge-pl{background:#1f6feb;font-size:.7rem}
+.section-lbl{color:#58a6ff;font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;font-weight:600;margin-bottom:.6rem;margin-top:1rem}
+.btn-xs{font-size:.72rem;padding:.15rem .45rem}
+footer{color:#484f58;font-size:.72rem;text-align:center;padding:1.2rem;margin-top:auto;border-top:1px solid #21262d}
+footer a{color:#484f58;text-decoration:none}
 </style>
 </head>
 <body>
-<nav class="navbar navbar-dark mb-4 px-3">
-  <span class="navbar-brand fw-bold">VideoWall Config</span>
+<nav class="navbar navbar-dark mb-0 px-3 py-2">
+  <span class="navbar-brand fw-bold" style="font-size:1.05rem">VideoWall Config</span>
   <div class="d-flex gap-2">
     <a href="/" class="btn btn-outline-secondary btn-sm">Dashboard</a>
     <a href="/logout" class="btn btn-outline-danger btn-sm">Logout</a>
   </div>
 </nav>
-<div class="container-fluid px-4">
+
+<div class="container-fluid px-4 pt-3 flex-grow-1">
   {% with messages = get_flashed_messages() %}
-    {% if messages %}<div class="alert alert-info alert-dismissible"><button type="button" class="btn-close" data-bs-dismiss="alert"></button>{{ messages[0] }}</div>{% endif %}
+    {% if messages %}<div class="alert alert-info alert-dismissible mb-3 py-2"><button type="button" class="btn-close btn-sm" data-bs-dismiss="alert"></button>{{ messages[0] }}</div>{% endif %}
   {% endwith %}
 
-  <!-- ── CAMERA LIBRARY ── -->
-  <div class="card">
-    <div class="card-header">Camera Library</div>
-    <div class="card-body">
-      <div class="row g-3 mb-4" id="cam-grid">
-        {% for cam in cfg.get('cameras', []) %}
+  <ul class="nav nav-tabs mb-4" id="cfgTabs">
+    <li class="nav-item"><a class="nav-link active" href="#cameras"  data-bs-toggle="tab">Cameras</a></li>
+    <li class="nav-item"><a class="nav-link"        href="#playlists" data-bs-toggle="tab">Playlists</a></li>
+    <li class="nav-item"><a class="nav-link"        href="#schedule"  data-bs-toggle="tab">Schedule</a></li>
+    <li class="nav-item"><a class="nav-link"        href="#system"    data-bs-toggle="tab">System</a></li>
+  </ul>
+
+  <div class="tab-content">
+
+    <!-- ══ CAMERAS TAB ══════════════════════════════════════════ -->
+    <div class="tab-pane fade show active" id="cameras">
+      <div class="row g-3 mb-4">
+        {% for cam in cfg.get('cameras',[]) %}
         <div class="col-6 col-md-4 col-lg-3">
           <div class="cam-card">
-            {% set snap = '/static/snapshots/' + cam.id + '.jpg' %}
-            <img src="{{ snap }}" id="snap-{{ cam.id }}"
-                 onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22130%22><rect width=%22200%22 height=%22130%22 fill=%22%230d1117%22/><text x=%2250%%22 y=%2250%%22 fill=%22%2330363d%22 font-size=%2214%22 text-anchor=%22middle%22 dy=%22.3em%22>No snapshot</text></svg>'">
-            <span class="snap-badge">
-              <button class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size:.65rem"
-                onclick="refreshSnap('{{ cam.id }}')">&#x21bb; snap</button>
-            </span>
+            <img src="/static/snapshots/{{ cam.id }}.jpg" id="snap-{{ cam.id }}"
+                 onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%230d1117%22 width=%22200%22 height=%22120%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 fill=%22%2330363d%22 font-size=%2213%22 text-anchor=%22middle%22 dy=%22.3em%22%3ENo snapshot%3C/text%3E%3C/svg%3E'">
+            <button class="snap-btn" onclick="refreshSnap('{{ cam.id }}')">&#x21bb; snap</button>
             <div class="cam-info">
               <div class="cam-name">{{ cam.name }}</div>
-              <div class="cam-url mt-1">{{ cam.url }}</div>
+              <div class="cam-url">{{ cam.url }}</div>
               {% if cam.substream %}
               <div class="mt-1">
-                <span class="badge {{ 'badge-sub' if cam.use_substream else 'badge-main' }}">
-                  {{ 'LOW stream' if cam.use_substream else 'HIGH stream' }}
+                <span class="badge {% if cam.use_substream %}bg-warning text-dark{% else %}bg-success{% endif %}" style="font-size:.65rem">
+                  {{ 'LOW stream active' if cam.use_substream else 'HIGH stream active' }}
                 </span>
               </div>
               {% endif %}
               <div class="mt-2 d-flex gap-1 flex-wrap">
                 {% if cam.substream %}
-                <form method="post" style="display:inline">
-                  <input type="hidden" name="action" value="toggle_substream">
+                <form method="post" action="/api/camera/toggle-sub" style="display:inline">
                   <input type="hidden" name="cam_id" value="{{ cam.id }}">
-                  <button class="btn btn-sm btn-outline-warning py-0" style="font-size:.7rem">Toggle Hi/Low</button>
+                  <button class="btn btn-outline-warning btn-xs">Hi/Low</button>
                 </form>
                 {% endif %}
-                <form method="post" style="display:inline" onsubmit="return confirm('Remove {{ cam.name }}?')">
-                  <input type="hidden" name="action" value="del_camera">
+                <form method="post" action="/api/camera/delete" style="display:inline" onsubmit="return confirm('Remove {{ cam.name }}?')">
                   <input type="hidden" name="cam_id" value="{{ cam.id }}">
-                  <button class="btn btn-sm btn-outline-danger py-0" style="font-size:.7rem">Remove</button>
+                  <button class="btn btn-outline-danger btn-xs">Remove</button>
                 </form>
               </div>
             </div>
@@ -84,222 +93,260 @@ label{color:#8b949e;font-size:.82rem;margin-bottom:.2rem}
         {% endfor %}
       </div>
 
-      <!-- Add Camera -->
-      <div class="section-title">Add Camera</div>
-      <form method="post">
-        <input type="hidden" name="action" value="add_camera">
+      <div class="section-lbl">Add Camera</div>
+      <form method="post" action="/api/camera/add">
         <div class="row g-2">
-          <div class="col-md-2">
-            <label>ID (no spaces)</label>
-            <input name="cam_id" class="form-control form-control-sm" placeholder="cam_entrance" required>
-          </div>
-          <div class="col-md-2">
-            <label>Name</label>
-            <input name="cam_name" class="form-control form-control-sm" placeholder="Entrance" required>
-          </div>
-          <div class="col-md-3">
-            <label>Main Stream URL (high)</label>
-            <input name="cam_url" class="form-control form-control-sm" placeholder="rtsp://..." required>
-          </div>
-          <div class="col-md-3">
-            <label>Sub Stream URL (low, optional)</label>
-            <input name="cam_sub" class="form-control form-control-sm" placeholder="rtsp://...">
-          </div>
-          <div class="col-md-2 d-flex align-items-end">
-            <button class="btn btn-success btn-sm w-100">Add & Snapshot</button>
-          </div>
+          <div class="col-md-2"><label>ID (no spaces)</label><input name="cam_id" class="form-control form-control-sm" placeholder="cam_entrance" required></div>
+          <div class="col-md-2"><label>Display Name</label><input name="cam_name" class="form-control form-control-sm" placeholder="Entrance" required></div>
+          <div class="col-md-3"><label>Main Stream (high res)</label><input name="cam_url" class="form-control form-control-sm" placeholder="rtsp://..." required></div>
+          <div class="col-md-3"><label>Sub Stream (low res, optional)</label><input name="cam_sub" class="form-control form-control-sm" placeholder="rtsp://..."></div>
+          <div class="col-md-2 d-flex align-items-end"><button class="btn btn-success btn-sm w-100">Add &amp; Snapshot</button></div>
         </div>
       </form>
     </div>
-  </div>
 
-  <!-- ── ROTATION BUILDER ── -->
-  {% for mon_idx, mon in enumerate(cfg.get('monitors', [])) %}
-  <div class="card">
-    <div class="card-header">{{ mon.name }} — Rotation Sequence</div>
-    <div class="card-body">
-      {% set rotation = mon.get('rotation', []) %}
-      {% for step_idx, step in enumerate(rotation) %}
-      <div class="step-card">
-        <form method="post">
-          <input type="hidden" name="action" value="update_step">
-          <input type="hidden" name="monitor_id" value="{{ mon_idx + 1 }}">
-          <input type="hidden" name="step_idx" value="{{ step_idx }}">
-          <div class="row g-2 align-items-end mb-2">
-            <div class="col-md-3">
-              <label>Step Name</label>
-              <input name="step_name" class="form-control form-control-sm" value="{{ step.name }}">
-            </div>
-            <div class="col-md-2">
-              <label>Layout</label>
-              <select name="layout" class="form-select form-select-sm">
-                {% for n in [1,2,4,6,9,16] %}
-                <option value="{{ n }}" {{ 'selected' if step.layout == n else '' }}>{{ n }} camera{{ 's' if n>1 else '' }}</option>
-                {% endfor %}
-              </select>
-            </div>
-            <div class="col-md-2">
-              <label>Duration (sec)</label>
-              <input name="duration" type="number" class="form-control form-control-sm" value="{{ step.duration }}" min="0">
-            </div>
-            <div class="col-md-5">
-              <label>Cameras in this step</label>
-              <div class="d-flex flex-wrap gap-1">
-                {% for cam in cfg.get('cameras', []) %}
-                <div class="form-check form-check-inline">
-                  <input class="form-check-input" type="checkbox" name="cameras" value="{{ cam.id }}"
-                         id="c{{ mon_idx }}_{{ step_idx }}_{{ cam.id }}"
-                         {{ 'checked' if cam.id in step.get('cameras',[]) else '' }}>
-                  <label class="form-check-label" for="c{{ mon_idx }}_{{ step_idx }}_{{ cam.id }}" style="font-size:.8rem">
-                    {{ cam.name }}
-                  </label>
+    <!-- ══ PLAYLISTS TAB ════════════════════════════════════════ -->
+    <div class="tab-pane fade" id="playlists">
+      {% for pl in cfg.get('playlists',[]) %}
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <span><span class="badge badge-pl me-2">{{ pl.id }}</span>{{ pl.name }}</span>
+          <form method="post" action="/api/playlist/delete" style="display:inline" onsubmit="return confirm('Delete playlist {{ pl.name }}?')">
+            <input type="hidden" name="pl_id" value="{{ pl.id }}">
+            <button class="btn btn-outline-danger btn-xs">Delete Playlist</button>
+          </form>
+        </div>
+        <div class="card-body">
+          {% for step_idx, step in enumerate(pl.get('rotation',[])) %}
+          <div class="step-block">
+            <form method="post" action="/api/playlist/step/update">
+              <input type="hidden" name="pl_id" value="{{ pl.id }}">
+              <input type="hidden" name="step_idx" value="{{ step_idx }}">
+              <div class="row g-2 align-items-end mb-2">
+                <div class="col-md-3"><label>Step Name</label><input name="step_name" class="form-control form-control-sm" value="{{ step.name }}"></div>
+                <div class="col-md-2">
+                  <label>Layout</label>
+                  <select name="layout" class="form-select form-select-sm">
+                    {% for n in [1,2,4,6,9,16] %}<option value="{{ n }}" {{ 'selected' if step.layout==n }}>{{ n }} cam{{ 's' if n>1 }}</option>{% endfor %}
+                  </select>
                 </div>
+                <div class="col-md-2"><label>Duration (sec, 0=static)</label><input name="duration" type="number" class="form-control form-control-sm" value="{{ step.duration }}" min="0"></div>
+                <div class="col-md-5">
+                  <label>Cameras</label>
+                  <div class="d-flex flex-wrap gap-2">
+                    {% for cam in cfg.get('cameras',[]) %}
+                    <div class="form-check form-check-inline mb-0">
+                      <input class="form-check-input" type="checkbox" name="cameras" value="{{ cam.id }}"
+                             id="ck_{{ pl.id }}_{{ step_idx }}_{{ cam.id }}"
+                             {{ 'checked' if cam.id in step.get('cameras',[]) }}>
+                      <label class="form-check-label" for="ck_{{ pl.id }}_{{ step_idx }}_{{ cam.id }}" style="font-size:.78rem">{{ cam.name }}</label>
+                    </div>
+                    {% endfor %}
+                  </div>
+                </div>
+              </div>
+              <!-- Thumbs -->
+              <div class="mb-2">
+                {% for cid in step.get('cameras',[]) %}
+                  {% for cam in cfg.get('cameras',[]) %}{% if cam.id==cid %}
+                  <img src="/static/snapshots/{{ cam.id }}.jpg" class="cam-thumb me-1" title="{{ cam.name }}"
+                       onerror="this.style.background='#21262d'">
+                  {% endif %}{% endfor %}
                 {% endfor %}
               </div>
+              <div class="d-flex gap-1">
+                <button class="btn btn-primary btn-xs">Save</button>
+                <button type="submit" form="mv_{{ pl.id }}_{{ step_idx }}_up" class="btn btn-outline-secondary btn-xs">↑</button>
+                <button type="submit" form="mv_{{ pl.id }}_{{ step_idx }}_dn" class="btn btn-outline-secondary btn-xs">↓</button>
+                <button type="submit" form="dl_{{ pl.id }}_{{ step_idx }}" class="btn btn-outline-danger btn-xs" onclick="return confirm('Remove step?')">Delete</button>
+              </div>
+            </form>
+            <form id="mv_{{ pl.id }}_{{ step_idx }}_up" method="post" action="/api/playlist/step/move">
+              <input type="hidden" name="pl_id" value="{{ pl.id }}"><input type="hidden" name="step_idx" value="{{ step_idx }}"><input type="hidden" name="direction" value="up">
+            </form>
+            <form id="mv_{{ pl.id }}_{{ step_idx }}_dn" method="post" action="/api/playlist/step/move">
+              <input type="hidden" name="pl_id" value="{{ pl.id }}"><input type="hidden" name="step_idx" value="{{ step_idx }}"><input type="hidden" name="direction" value="down">
+            </form>
+            <form id="dl_{{ pl.id }}_{{ step_idx }}" method="post" action="/api/playlist/step/delete">
+              <input type="hidden" name="pl_id" value="{{ pl.id }}"><input type="hidden" name="step_idx" value="{{ step_idx }}">
+            </form>
+          </div>
+          {% endfor %}
+
+          <div class="section-lbl">Add Step</div>
+          <form method="post" action="/api/playlist/step/add">
+            <input type="hidden" name="pl_id" value="{{ pl.id }}">
+            <div class="row g-2 align-items-end">
+              <div class="col-md-3"><label>Step Name</label><input name="step_name" class="form-control form-control-sm" placeholder="e.g. Front Door Full" required></div>
+              <div class="col-md-2"><label>Layout</label><select name="layout" class="form-select form-select-sm">{% for n in [1,2,4,6,9,16] %}<option value="{{ n }}">{{ n }} cam{{ 's' if n>1 }}</option>{% endfor %}</select></div>
+              <div class="col-md-2"><label>Duration (sec)</label><input name="duration" type="number" class="form-control form-control-sm" value="10" min="0"></div>
+              <div class="col-md-2 d-flex align-items-end"><button class="btn btn-success btn-sm w-100">Add Step</button></div>
             </div>
-          </div>
-          <!-- Camera thumbs preview -->
-          <div class="mb-2">
-            {% for cam_id in step.get('cameras', []) %}
-              {% for cam in cfg.get('cameras', []) %}{% if cam.id == cam_id %}
-              <span class="cam-slot" title="{{ cam.name }}">
-                <img src="/static/snapshots/{{ cam.id }}.jpg" class="cam-thumb"
-                     onerror="this.style.background='#30363d'">
-              </span>
-              {% endif %}{% endfor %}
-            {% endfor %}
-          </div>
-          <div class="d-flex gap-1">
-            <button class="btn btn-primary btn-sm">Save Step</button>
-            <!-- Move up -->
-            <button type="submit" form="move{{ mon_idx }}_{{ step_idx }}_up" class="btn btn-outline-secondary btn-sm">↑</button>
-            <!-- Move down -->
-            <button type="submit" form="move{{ mon_idx }}_{{ step_idx }}_down" class="btn btn-outline-secondary btn-sm">↓</button>
-            <!-- Delete -->
-            <button type="submit" form="del{{ mon_idx }}_{{ step_idx }}" class="btn btn-outline-danger btn-sm"
-                    onclick="return confirm('Remove this step?')">Delete</button>
-          </div>
-        </form>
-        <form id="move{{ mon_idx }}_{{ step_idx }}_up" method="post">
-          <input type="hidden" name="action" value="move_step">
-          <input type="hidden" name="monitor_id" value="{{ mon_idx + 1 }}">
-          <input type="hidden" name="step_idx" value="{{ step_idx }}">
-          <input type="hidden" name="direction" value="up">
-        </form>
-        <form id="move{{ mon_idx }}_{{ step_idx }}_down" method="post">
-          <input type="hidden" name="action" value="move_step">
-          <input type="hidden" name="monitor_id" value="{{ mon_idx + 1 }}">
-          <input type="hidden" name="step_idx" value="{{ step_idx }}">
-          <input type="hidden" name="direction" value="down">
-        </form>
-        <form id="del{{ mon_idx }}_{{ step_idx }}" method="post">
-          <input type="hidden" name="action" value="del_step">
-          <input type="hidden" name="monitor_id" value="{{ mon_idx + 1 }}">
-          <input type="hidden" name="step_idx" value="{{ step_idx }}">
-        </form>
+          </form>
+        </div>
       </div>
       {% endfor %}
 
-      <!-- Add Step -->
-      <div class="section-title mt-3">Add Step to Rotation</div>
-      <form method="post">
-        <input type="hidden" name="action" value="add_step">
-        <input type="hidden" name="monitor_id" value="{{ mon_idx + 1 }}">
+      <div class="section-lbl">New Playlist</div>
+      <form method="post" action="/api/playlist/add">
         <div class="row g-2 align-items-end">
-          <div class="col-md-3">
-            <label>Step Name</label>
-            <input name="step_name" class="form-control form-control-sm" placeholder="e.g. Entrance Full" required>
-          </div>
-          <div class="col-md-2">
-            <label>Layout</label>
-            <select name="layout" class="form-select form-select-sm">
-              {% for n in [1,2,4,6,9,16] %}
-              <option value="{{ n }}">{{ n }} camera{{ 's' if n>1 else '' }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="col-md-2">
-            <label>Duration (sec, 0=static)</label>
-            <input name="duration" type="number" class="form-control form-control-sm" value="10" min="0">
-          </div>
-          <div class="col-md-2 d-flex align-items-end">
-            <button class="btn btn-success btn-sm w-100">Add Step</button>
-          </div>
+          <div class="col-md-2"><label>Playlist ID</label><input name="pl_id" class="form-control form-control-sm" placeholder="pl_weekend" required></div>
+          <div class="col-md-3"><label>Display Name</label><input name="pl_name" class="form-control form-control-sm" placeholder="Weekend Mode" required></div>
+          <div class="col-md-2 d-flex align-items-end"><button class="btn btn-primary btn-sm w-100">Create Playlist</button></div>
         </div>
       </form>
     </div>
-  </div>
-  {% endfor %}
 
-  <!-- Add Monitor -->
-  <div class="card">
-    <div class="card-header">Add Monitor</div>
-    <div class="card-body">
-      <form method="post" class="row g-2 align-items-end">
-        <input type="hidden" name="action" value="add_monitor">
-        <div class="col-md-3">
-          <label>Monitor Name</label>
-          <input name="monitor_name" class="form-control form-control-sm" placeholder="Monitor 2" required>
-        </div>
-        <div class="col-md-2 d-flex align-items-end">
-          <button class="btn btn-primary btn-sm w-100">Add Monitor</button>
-        </div>
-      </form>
-    </div>
-  </div>
+    <!-- ══ SCHEDULE TAB ═════════════════════════════════════════ -->
+    <div class="tab-pane fade" id="schedule">
+      {% for mon_idx, mon in enumerate(cfg.get('monitors',[])) %}
+      <div class="card">
+        <div class="card-header">{{ mon.name }} — Schedule</div>
+        <div class="card-body">
 
-  <!-- System Settings -->
-  <div class="card">
-    <div class="card-header">System Settings</div>
-    <div class="card-body">
-      <form method="post">
-        <input type="hidden" name="action" value="system">
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label>Alert Email From (Gmail address)</label>
-            <input type="email" name="email_from" class="form-control form-control-sm" value="{{ cfg.system.alert_email_from or '' }}">
+          <!-- Default playlist -->
+          <div class="mb-3 d-flex align-items-center gap-3">
+            <form method="post" action="/api/schedule/set-default" class="d-flex align-items-center gap-2">
+              <input type="hidden" name="monitor_id" value="{{ mon_idx+1 }}">
+              <label class="mb-0">Default Playlist (when no rule matches):</label>
+              <select name="playlist" class="form-select form-select-sm" style="width:auto">
+                {% for pl in cfg.get('playlists',[]) %}
+                <option value="{{ pl.id }}" {{ 'selected' if mon.get('default_playlist')==pl.id }}>{{ pl.name }}</option>
+                {% endfor %}
+              </select>
+              <button class="btn btn-outline-secondary btn-xs">Set Default</button>
+            </form>
           </div>
-          <div class="col-md-6">
-            <label>Alert Email To</label>
-            <input type="email" name="email_to" class="form-control form-control-sm" value="{{ cfg.system.alert_email_to or '' }}">
+
+          <!-- Existing rules -->
+          {% for rule_idx, rule in enumerate(mon.get('schedule',[])) %}
+          <div class="schedule-rule">
+            <div class="row align-items-center g-2">
+              <div class="col-md-2 fw-bold" style="font-size:.85rem">{{ rule.name }}</div>
+              <div class="col-md-2"><span class="badge badge-pl">{{ rule.playlist }}</span></div>
+              <div class="col-md-4">
+                <div class="d-flex flex-wrap gap-1">
+                  {% for day in ['mon','tue','wed','thu','fri','sat','sun'] %}
+                  <span class="badge {% if day in rule.get('days',[]) %}bg-primary{% else %}bg-secondary{% endif %}" style="font-size:.65rem">{{ day }}</span>
+                  {% endfor %}
+                </div>
+              </div>
+              <div class="col-md-2 text-muted" style="font-size:.82rem">{{ rule.start }} → {{ rule.end }}</div>
+              <div class="col-md-2">
+                <form method="post" action="/api/schedule/delete" onsubmit="return confirm('Remove this rule?')">
+                  <input type="hidden" name="monitor_id" value="{{ mon_idx+1 }}">
+                  <input type="hidden" name="rule_idx" value="{{ rule_idx }}">
+                  <button class="btn btn-outline-danger btn-xs">Remove</button>
+                </form>
+              </div>
+            </div>
           </div>
-          <div class="col-md-4">
-            <label>Gmail App Password (16 chars)</label>
-            <input type="password" name="gmail_pass" class="form-control form-control-sm" placeholder="Leave blank to keep current">
-          </div>
-          <div class="col-md-2">
-            <label>Watchdog Interval (sec)</label>
-            <input type="number" name="watchdog_interval" class="form-control form-control-sm" value="{{ cfg.system.watchdog_interval or 30 }}">
-          </div>
-          <div class="col-md-3">
-            <label>New Admin Password</label>
-            <input type="password" name="new_password" class="form-control form-control-sm" placeholder="Leave blank to keep current">
-          </div>
+          {% endfor %}
+
+          <!-- Add rule -->
+          <div class="section-lbl">Add Schedule Rule</div>
+          <form method="post" action="/api/schedule/add">
+            <input type="hidden" name="monitor_id" value="{{ mon_idx+1 }}">
+            <div class="row g-2 mb-2">
+              <div class="col-md-2"><label>Rule Name</label><input name="rule_name" class="form-control form-control-sm" placeholder="Business Hours" required></div>
+              <div class="col-md-2">
+                <label>Playlist</label>
+                <select name="playlist" class="form-select form-select-sm">
+                  {% for pl in cfg.get('playlists',[]) %}<option value="{{ pl.id }}">{{ pl.name }}</option>{% endfor %}
+                </select>
+              </div>
+              <div class="col-md-2"><label>Start</label><input name="start" type="time" class="form-control form-control-sm" value="08:00" required></div>
+              <div class="col-md-2"><label>End</label><input name="end" type="time" class="form-control form-control-sm" value="20:00" required></div>
+              <div class="col-md-4">
+                <label>Days</label>
+                <div class="d-flex gap-2 flex-wrap day-check">
+                  {% for day,label in [('mon','Mon'),('tue','Tue'),('wed','Wed'),('thu','Thu'),('fri','Fri'),('sat','Sat'),('sun','Sun')] %}
+                  <div class="form-check form-check-inline mb-0">
+                    <input class="form-check-input" type="checkbox" name="days" value="{{ day }}" id="d_{{ mon_idx }}_{{ day }}"
+                           {{ 'checked' if day in ['mon','tue','wed','thu','fri'] }}>
+                    <label class="form-check-label" for="d_{{ mon_idx }}_{{ day }}">{{ label }}</label>
+                  </div>
+                  {% endfor %}
+                </div>
+              </div>
+            </div>
+            <button class="btn btn-success btn-sm">Add Rule</button>
+            <small class="text-muted ms-2">Overnight schedules (e.g. 20:00 → 08:00) are supported</small>
+          </form>
         </div>
-        <div class="mt-3 d-flex gap-2">
-          <button type="submit" class="btn btn-primary btn-sm">Save Settings</button>
-          <button type="button" class="btn btn-outline-secondary btn-sm" onclick="testEmail()">Test Email</button>
+      </div>
+      {% endfor %}
+
+      <div class="card">
+        <div class="card-header">Add Monitor</div>
+        <div class="card-body">
+          <form method="post" action="/api/schedule/add" class="row g-2 align-items-end">
+            <div class="col-md-3"><label>Monitor Name</label><input name="monitor_name" class="form-control form-control-sm" placeholder="Monitor 2" required></div>
+            <div class="col-md-2 d-flex align-items-end"><a href="#" class="btn btn-primary btn-sm w-100" onclick="alert('Use the API — coming soon')">Add Monitor</a></div>
+          </form>
         </div>
-      </form>
+      </div>
     </div>
-  </div>
+
+    <!-- ══ SYSTEM TAB ═══════════════════════════════════════════ -->
+    <div class="tab-pane fade" id="system">
+      <div class="card">
+        <div class="card-header">Email Alerts</div>
+        <div class="card-body">
+          <form method="post" action="/api/system/save">
+            <div class="row g-3">
+              <div class="col-md-4"><label>Gmail Address (sender)</label><input type="email" name="email_from" class="form-control form-control-sm" value="{{ cfg.system.alert_email_from or '' }}"></div>
+              <div class="col-md-4"><label>Alert Recipient Email</label><input type="email" name="email_to" class="form-control form-control-sm" value="{{ cfg.system.alert_email_to or '' }}"></div>
+              <div class="col-md-4"><label>Gmail App Password</label><input type="password" name="gmail_pass" class="form-control form-control-sm" placeholder="Leave blank to keep current"></div>
+              <div class="col-md-3"><label>Watchdog Interval (seconds)</label><input type="number" name="watchdog_interval" class="form-control form-control-sm" value="{{ cfg.system.watchdog_interval or 30 }}"></div>
+              <div class="col-md-4"><label>New Admin Password</label><input type="password" name="new_password" class="form-control form-control-sm" placeholder="Leave blank to keep current"></div>
+            </div>
+            <div class="mt-3 d-flex gap-2">
+              <button type="submit" class="btn btn-primary btn-sm">Save Settings</button>
+              <button type="button" class="btn btn-outline-secondary btn-sm" onclick="testEmail()">Send Test Email</button>
+            </div>
+          </form>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">About</div>
+        <div class="card-body" style="font-size:.85rem;color:#8b949e">
+          <p class="mb-1"><strong style="color:#e6edf3">VideoWall</strong> v{{ VERSION }} — Security Camera Display System</p>
+          <p class="mb-1">Designed &amp; developed by <strong style="color:#e6edf3">{{ BUILT_BY }}</strong></p>
+          <p class="mb-0"><a href="{{ COMPANY_URL }}" target="_blank" style="color:#58a6ff">{{ COMPANY }}</a></p>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- tab-content -->
 </div>
+
+<footer>
+  &copy; 2026 <a href="{{ COMPANY_URL }}" target="_blank">{{ COMPANY }}</a>
+  &middot; Designed &amp; developed by {{ BUILT_BY }}
+  &middot; v{{ VERSION }}
+</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-function refreshSnap(camId) {
-  const img = document.getElementById('snap-' + camId);
-  img.style.opacity = '0.4';
-  fetch('/api/snapshot/' + camId, {method:'POST'})
-    .then(r => r.json())
-    .then(d => {
-      if (d.ok) { img.src = d.url; img.style.opacity = '1'; }
-      else { alert('Snapshot failed: ' + d.msg); img.style.opacity = '1'; }
-    });
+// Activate tab from URL hash
+const hash = location.hash;
+if(hash){
+  const tab = document.querySelector(`.nav-tabs a[href="${hash}"]`);
+  if(tab) new bootstrap.Tab(tab).show();
 }
-function testEmail() {
-  fetch('/api/test-email', {method:'POST'}).then(r=>r.json())
-    .then(d => alert(d.ok ? '✓ ' + d.msg : '✗ ' + d.msg));
+function refreshSnap(id){
+  const img=document.getElementById('snap-'+id);
+  img.style.opacity='.3';
+  fetch('/api/snapshot/'+id,{method:'POST'}).then(r=>r.json()).then(d=>{
+    if(d.ok){img.src=d.url;}
+    else{alert('Snapshot failed: '+d.msg);}
+    img.style.opacity='1';
+  });
+}
+function testEmail(){
+  fetch('/api/test-email',{method:'POST'}).then(r=>r.json())
+    .then(d=>alert(d.ok?'✓ '+d.msg:'✗ '+d.msg));
 }
 </script>
 </body>

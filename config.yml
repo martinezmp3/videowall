@@ -27,9 +27,9 @@ cameras:
     substream: "rtsp://192.168.86.233:7447/AkM4O6ZWS0vx23jq"
     use_substream: false
 
-monitors:
-  - id: 1
-    name: "Monitor 1"
+playlists:
+  - id: pl_business
+    name: "Business Hours"
     rotation:
       - name: "Driveway"
         layout: 1
@@ -55,3 +55,26 @@ monitors:
         layout: 4
         duration: 30
         cameras: [cam_driveway, cam_frontdoor, cam_backyard, cam_trash]
+  - id: pl_night
+    name: "Night Mode"
+    rotation:
+      - name: "All Cameras"
+        layout: 4
+        duration: 0
+        cameras: [cam_driveway, cam_frontdoor, cam_backyard, cam_trash]
+
+monitors:
+  - id: 1
+    name: "Monitor 1"
+    default_playlist: pl_business
+    schedule:
+      - name: "Business Hours"
+        playlist: pl_business
+        days: [mon, tue, wed, thu, fri]
+        start: "08:00"
+        end: "20:00"
+      - name: "Night Mode"
+        playlist: pl_night
+        days: [mon, tue, wed, thu, fri, sat, sun]
+        start: "20:00"
+        end: "08:00"
