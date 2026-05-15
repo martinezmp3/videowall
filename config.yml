@@ -1,0 +1,32 @@
+system:
+  admin_password_hash: "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918"
+  alert_email_from: ""
+  alert_email_to: ""
+  gmail_app_password: ""
+  watchdog_interval: 30
+  stream_dead_threshold: 15
+
+monitors:
+  - id: 1
+    name: "Monitor 1"
+    screens:
+      - name: "Main View"
+        layout: 4
+        duration: 0
+        cameras:
+          - name: "Camera 1"
+            url: "rtsp://192.168.1.100/stream1"
+            use_substream: false
+            substream: ""
+          - name: "Camera 2"
+            url: "rtsp://192.168.1.101/stream1"
+            use_substream: false
+            substream: ""
+          - name: "Camera 3"
+            url: "rtsp://192.168.1.102/stream1"
+            use_substream: false
+            substream: ""
+          - name: "Camera 4"
+            url: "rtsp://192.168.1.103/stream1"
+            use_substream: false
+            substream: ""

@@ -1,0 +1,18 @@
+[Unit]
+Description=VideoWall Display Service
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/opt/videowall/start-display.sh
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+Environment=DISPLAY=:0
+Environment=LIBVA_DRIVER_NAME=iHD
+
+[Install]
+WantedBy=multi-user.target
