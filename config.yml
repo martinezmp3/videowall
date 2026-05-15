@@ -137,10 +137,7 @@ playlists:
 - id: alldayallcameras
   name: All cámaras all day
   rotation:
-  - name: All cameras
-    layout: 16
-    duration: 0
-    cameras:
+  - cameras:
     - cam_driveway
     - cam_frontdoor
     - cam_backyard
@@ -157,9 +154,13 @@ playlists:
     - cam_trash
     - doorbellcam
     - drivewaytop
+    duration: 0
+    layout: 16
+    name: All cameras
 system:
   admin_password_hash: 8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918
   alert_email_from: ''
   alert_email_to: ''
+  debug_log: false
   gmail_app_password: ''
   watchdog_interval: 30

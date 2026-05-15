@@ -6,12 +6,23 @@ from email.mime.text import MIMEText
 CONFIG_PATH = "/opt/videowall/config.yml"
 STATE_FILE  = "/opt/videowall/state.json"
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
-    handlers=[logging.StreamHandler(), logging.FileHandler("/var/log/videowall/supervisor.log")]
-)
+from logging.handlers import RotatingFileHandler as _RFH
+
+LOG_FILE = "/var/log/videowall/supervisor.log"
+_fmt     = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
+_fh      = _RFH(LOG_FILE, maxBytes=5*1024*1024, backupCount=4)
+_fh.setFormatter(_fmt)
+_sh      = logging.StreamHandler()
+_sh.setFormatter(_fmt)
+logging.root.setLevel(logging.INFO)
+logging.root.addHandler(_fh)
+logging.root.addHandler(_sh)
 log = logging.getLogger(__name__)
+
+def apply_log_level(cfg):
+    lvl = logging.DEBUG if cfg.get('system',{}).get('debug_log') else logging.INFO
+    logging.root.setLevel(lvl)
+    log.info(f"Log level set to {'DEBUG' if lvl == logging.DEBUG else 'INFO'}")
 
 def load_config():
     with open(CONFIG_PATH) as f:
@@ -290,8 +301,11 @@ def watchdog(config):
         time.sleep(interval)
         try:
             cfg = load_config()
+            apply_log_level(cfg)
+            log.debug(f"Watchdog tick — checking {len(cfg.get('cameras',[]))} cameras")
             for cam in cfg.get('cameras',[]):
                 url = cam_url(cam)
+                log.debug(f"Health check: {cam['name']} → {url}")
                 alive = check_stream(url)
                 if not alive and cam['id'] not in dead:
                     dead.add(cam['id'])
@@ -353,6 +367,7 @@ def main():
         log.error("X server not ready"); sys.exit(1)
 
     config         = load_config()
+    apply_log_level(config)
     # ── Setup / factory-reset mode ──────────────────────────────────────────
     if config.get("setup_mode"):
         show_setup_screen()

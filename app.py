@@ -294,9 +294,12 @@ def system_save():
     cfg['system']['alert_email_to']     = request.form.get('email_to','')
     cfg['system']['gmail_app_password'] = request.form.get('gmail_pass','')
     cfg['system']['watchdog_interval']  = int(request.form.get('watchdog_interval',30))
+    cfg['system']['debug_log']          = request.form.get('debug_log') == '1'
     pw = request.form.get('new_password','')
     if pw: cfg['system']['admin_password_hash'] = hash_pw(pw)
-    save_config(cfg); flash('Settings saved')
+    save_config(cfg)
+    reload_display()
+    flash('Settings saved')
     return redirect(url_for('config_page')+'#system')
 
 @app.route('/api/restart', methods=['POST'])
@@ -490,6 +493,36 @@ def factory_reset():
 
     session.clear()
     return redirect(url_for('login') + '?reset=1')
+
+
+@app.route('/api/logs')
+@login_required
+def get_logs():
+    lines  = min(int(request.args.get('lines', 150)), 1000)
+    level  = request.args.get('level', 'all')
+    log_file = '/var/log/videowall/supervisor.log'
+    try:
+        with open(log_file, errors='replace') as f:
+            all_lines = f.readlines()
+        if level == 'warning':
+            all_lines = [l for l in all_lines if any(x in l for x in ('[WARNING]','[ERROR]','[CRITICAL]'))]
+        elif level == 'error':
+            all_lines = [l for l in all_lines if any(x in l for x in ('[ERROR]','[CRITICAL]'))]
+        tail = all_lines[-lines:]
+        return jsonify({'ok': True, 'lines': tail, 'total': len(all_lines),
+                        'debug': load_config().get('system',{}).get('debug_log', False)})
+    except Exception as e:
+        return jsonify({'ok': False, 'msg': str(e)})
+
+@app.route('/api/logs/download')
+@login_required
+def download_logs():
+    import time as _t
+    ts = _t.strftime('%Y%m%d_%H%M%S')
+    return send_file('/var/log/videowall/supervisor.log',
+                     as_attachment=True,
+                     download_name=f'videowall_log_{ts}.txt',
+                     mimetype='text/plain')
 
 
 # ─── Network management ──────────────────────────────────────────────────────

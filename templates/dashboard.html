@@ -130,6 +130,34 @@ footer a:hover{color:#8b949e}
         </div>
       </div>
 
+      <!-- Log Viewer -->
+      <div class="card mt-3">
+        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <span>System Log <span id="log-debug-badge" class="badge bg-secondary ms-1" style="font-size:.7rem;display:none">DEBUG</span></span>
+          <div class="d-flex gap-2 align-items-center flex-wrap">
+            <select id="log-level" class="form-select form-select-sm" style="width:auto" onchange="loadLogs()">
+              <option value="all">All levels</option>
+              <option value="warning">Warnings &amp; Errors</option>
+              <option value="error">Errors only</option>
+            </select>
+            <select id="log-lines" class="form-select form-select-sm" style="width:auto" onchange="loadLogs()">
+              <option value="100">Last 100 lines</option>
+              <option value="250">Last 250 lines</option>
+              <option value="500">Last 500 lines</option>
+            </select>
+            <button class="btn btn-outline-secondary btn-xs" onclick="loadLogs()">&#8635; Refresh</button>
+            <a href="/api/logs/download" class="btn btn-outline-secondary btn-xs" download>Download</a>
+            <label class="form-check form-switch mb-0 ms-1" title="Auto-refresh every 15s">
+              <input class="form-check-input" type="checkbox" id="log-auto" onchange="toggleAutoLog()">
+              <span class="form-check-label small text-muted">Auto</span>
+            </label>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <pre id="log-output" style="background:#0d1117;color:#8b949e;font-size:.72rem;line-height:1.5;margin:0;padding:.75rem 1rem;max-height:380px;overflow-y:auto;border-radius:0 0 6px 6px;white-space:pre-wrap;word-break:break-all">Loading...</pre>
+        </div>
+      </div>
+
 <footer>
   &copy; 2026 <a href="{{ COMPANY_URL }}" target="_blank">{{ COMPANY }}</a>
   &nbsp;&middot;&nbsp; Designed &amp; developed by {{ BUILT_BY }}
@@ -138,6 +166,48 @@ footer a:hover{color:#8b949e}
 <script>
 function apiPost(url,msg){fetch(url,{method:'POST'}).then(()=>{alert(msg);setTimeout(()=>location.reload(),3000)});}
 setTimeout(()=>location.reload(),20000);
+
+let _logTimer = null;
+
+function colorLine(line) {
+  if (line.includes('[ERROR]') || line.includes('[CRITICAL]'))
+    return '<span style="color:#f85149">' + line + '</span>';
+  if (line.includes('[WARNING]'))
+    return '<span style="color:#d29922">' + line + '</span>';
+  if (line.includes('[DEBUG]'))
+    return '<span style="color:#484f58">' + line + '</span>';
+  if (line.includes('[INFO]'))
+    return '<span style="color:#8b949e">' + line + '</span>';
+  return line;
+}
+
+function loadLogs() {
+  const lines = document.getElementById('log-lines').value;
+  const level = document.getElementById('log-level').value;
+  const pre   = document.getElementById('log-output');
+  fetch(`/api/logs?lines=${lines}&level=${level}`)
+    .then(r => r.json())
+    .then(d => {
+      if (!d.ok) { pre.textContent = 'Error: ' + d.msg; return; }
+      const badge = document.getElementById('log-debug-badge');
+      if (badge) { badge.style.display = d.debug ? 'inline' : 'none'; }
+      if (!d.lines.length) { pre.innerHTML = '<span style="color:#484f58">No matching log entries.</span>'; return; }
+      pre.innerHTML = d.lines.map(l => colorLine(l.trimEnd())).join('\n');
+      pre.scrollTop = pre.scrollHeight;
+    })
+    .catch(() => { pre.textContent = 'Failed to load logs.'; });
+}
+
+function toggleAutoLog() {
+  if (_logTimer) { clearInterval(_logTimer); _logTimer = null; }
+  if (document.getElementById('log-auto').checked) {
+    loadLogs();
+    _logTimer = setInterval(loadLogs, 15000);
+  }
+}
+
+// Load logs on page ready
+document.addEventListener('DOMContentLoaded', loadLogs);
 
 function takeScreenshot() {
   const btn  = document.getElementById('snap-btn');
