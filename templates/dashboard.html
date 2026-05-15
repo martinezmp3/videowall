@@ -105,6 +105,31 @@ footer a:hover{color:#8b949e}
   </div>
 </div>
 
+      <!-- Live Screenshot -->
+      <div class="card mt-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          Live Screenshot
+          <div class="d-flex gap-2">
+            <button id="snap-btn" class="btn btn-outline-primary btn-xs" onclick="takeScreenshot()">
+              <span id="snap-spinner" class="spinner-border spinner-border-sm me-1 d-none"></span>
+              Capture
+            </button>
+            <a id="snap-dl" href="/api/screenshot?dl=1" class="btn btn-outline-secondary btn-xs" style="display:none" download>
+              Download
+            </a>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <div id="snap-placeholder" class="text-center text-muted p-4" style="font-size:.85rem">
+            Click <strong>Capture</strong> to take a live screenshot of the display output.
+          </div>
+          <img id="snap-img" src="" alt="screenshot"
+               style="display:none;width:100%;border-radius:0 0 6px 6px;cursor:zoom-in"
+               onclick="window.open(this.src)">
+          <div id="snap-meta" class="text-muted px-3 pb-2" style="font-size:.75rem;display:none"></div>
+        </div>
+      </div>
+
 <footer>
   &copy; 2026 <a href="{{ COMPANY_URL }}" target="_blank">{{ COMPANY }}</a>
   &nbsp;&middot;&nbsp; Designed &amp; developed by {{ BUILT_BY }}
@@ -113,6 +138,36 @@ footer a:hover{color:#8b949e}
 <script>
 function apiPost(url,msg){fetch(url,{method:'POST'}).then(()=>{alert(msg);setTimeout(()=>location.reload(),3000)});}
 setTimeout(()=>location.reload(),20000);
+
+function takeScreenshot() {
+  const btn  = document.getElementById('snap-btn');
+  const sp   = document.getElementById('snap-spinner');
+  const ph   = document.getElementById('snap-placeholder');
+  const img  = document.getElementById('snap-img');
+  const dl   = document.getElementById('snap-dl');
+  const meta = document.getElementById('snap-meta');
+  btn.disabled = true;
+  sp.classList.remove('d-none');
+  ph.style.display = 'none';
+  const ts = Date.now();
+  img.onload = () => {
+    sp.classList.add('d-none');
+    btn.disabled = false;
+    img.style.display = 'block';
+    dl.style.display = 'inline-block';
+    meta.style.display = 'block';
+    const elapsed = ((Date.now() - ts) / 1000).toFixed(1);
+    meta.textContent = 'Captured ' + new Date().toLocaleTimeString() + '  ·  click image to open full size';
+  };
+  img.onerror = () => {
+    sp.classList.add('d-none');
+    btn.disabled = false;
+    ph.style.display = 'block';
+    ph.innerHTML = '<span class="text-danger">Screenshot failed — check display service.</span>';
+  };
+  img.src = '/api/screenshot?t=' + ts;
+  img.style.display = 'none';
+}
 </script>
 </body>
 </html>

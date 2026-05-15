@@ -388,6 +388,26 @@ def schedule_update():
         flash('Invalid rule')
     return redirect(url_for('config_page')+'#schedule')
 
+@app.route('/api/screenshot')
+@login_required
+def screenshot():
+    """Capture all connected monitors and return as JPEG."""
+    import time as _time
+    out = '/tmp/vw_screenshot.jpg'
+    env = {**os.environ, 'DISPLAY': ':0'}
+    # scrot -z captures all screens, -q 85 = JPEG quality
+    r = subprocess.run(
+        ['scrot', '-z', '-q', '85', out],
+        env=env, capture_output=True, text=True, timeout=10
+    )
+    if r.returncode != 0 or not os.path.exists(out):
+        return jsonify({'ok': False, 'msg': r.stderr or 'scrot failed'}), 500
+    ts = _time.strftime('%Y%m%d_%H%M%S')
+    return send_file(out, mimetype='image/jpeg',
+                     as_attachment=request.args.get('dl') == '1',
+                     download_name=f'videowall_screenshot_{ts}.jpg')
+
+
 # ─── Backup / Restore / Factory Reset ────────────────────────────────────────
 DEFAULT_CONFIG = {
     'system': {
