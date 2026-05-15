@@ -171,14 +171,14 @@ def playlist_add():
     cfg.setdefault('playlists',[]).append({
         'id': pl_id, 'name': request.form.get('pl_name','New Playlist'), 'rotation':[]
     })
-    save_config(cfg); flash('Playlist created'); return redirect(url_for('config_page')+'#playlists')
+    save_config(cfg); flash('Playlist created.', 'success'); return redirect(url_for('config_page')+'#playlists')
 
 @app.route('/api/playlist/delete', methods=['POST'])
 @login_required
 def playlist_delete():
     cfg = load_config(); pl_id = request.form.get('pl_id','')
     cfg['playlists'] = [p for p in cfg.get('playlists',[]) if p['id']!=pl_id]
-    save_config(cfg); flash('Playlist deleted'); return redirect(url_for('config_page')+'#playlists')
+    save_config(cfg); flash('Playlist deleted.', 'success'); return redirect(url_for('config_page')+'#playlists')
 
 @app.route('/api/playlist/step/add', methods=['POST'])
 @login_required
@@ -206,7 +206,7 @@ def step_update():
             step['duration'] = int(request.form.get('duration', step['duration']))
             step['cameras']  = request.form.getlist('cameras')
             break
-    save_config(cfg); flash('Step saved')
+    save_config(cfg); flash('Step saved.', 'success')
     reload_display()
     return redirect(url_for('config_page')+'#playlists')
 
@@ -299,7 +299,7 @@ def system_save():
     if pw: cfg['system']['admin_password_hash'] = hash_pw(pw)
     save_config(cfg)
     reload_display()
-    flash('Settings saved')
+    flash('Settings saved.', 'success')
     return redirect(url_for('config_page')+'#system')
 
 @app.route('/api/restart', methods=['POST'])
@@ -385,10 +385,10 @@ def schedule_update():
         rule['start']    = request.form.get('start', rule['start'])
         rule['end']      = request.form.get('end', rule['end'])
         save_config(cfg)
-        flash('Schedule rule updated')
+        flash('Schedule rule updated.', 'success')
         reload_display()
     except IndexError:
-        flash('Invalid rule')
+        flash('Invalid rule.', 'danger')
     return redirect(url_for('config_page')+'#schedule')
 
 @app.route('/api/screenshot')
@@ -466,7 +466,7 @@ def backup_restore():
 def factory_reset():
     confirm = request.form.get('confirm', '')
     if confirm != 'RESET':
-        flash('Factory reset cancelled — confirmation text did not match.', 'danger')
+        flash('Factory reset cancelled — type RESET to confirm.', 'danger')
         return redirect(url_for('config_page') + '#system')
 
     # Build fresh config
@@ -537,7 +537,7 @@ def monitor_rename():
     try:
         cfg['monitors'][mon_idx]['name'] = name
         save_config(cfg)
-        flash(f'Monitor renamed to "{name}".')
+        flash(f'Monitor renamed to "{name}".', 'success')
     except IndexError:
         flash('Invalid monitor.', 'danger')
     return redirect(url_for('config_page') + '#schedule')
@@ -640,7 +640,7 @@ def net_eth():
         f.write(new_txt)
     # Apply in background so the HTTP response returns first
     subprocess.Popen(['bash','-c', f'sleep 2 && ifdown {ETH_IFACE} 2>/dev/null; ifup {ETH_IFACE}'])
-    flash('Ethernet settings saved — applying in background (5-10 sec).')
+    flash('Ethernet settings saved — applying in background. No reboot needed.', 'success')
     return redirect(url_for('config_page')+'#network')
 
 @app.route('/api/network/wifi/scan', methods=['POST'])

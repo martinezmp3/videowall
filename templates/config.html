@@ -42,6 +42,11 @@ label{color:#8b949e;font-size:.78rem;margin-bottom:.2rem;display:block}
 .pos-label{color:#8b949e;font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:.3rem}
 .pos-preview{width:100%;height:70px;object-fit:cover;border-radius:4px;margin-top:.4rem;background:#1c2128;display:block}
 .pos-preview.hidden{display:none}
+/* Readability on dark background */
+.text-muted{color:#adbac7!important}
+.small,.form-text{color:#adbac7!important}
+p.text-muted,p.small{color:#adbac7!important}
+code{background:#2d333b;color:#79c0ff;padding:.15em .35em;border-radius:3px;font-size:.84em;font-family:monospace}
 /* Modals */
 .modal-content{background:#161b22;border:1px solid #30363d;color:#e6edf3}
 .modal-header{background:#1c2128;border-bottom:1px solid #30363d}
@@ -62,8 +67,15 @@ footer a:hover{color:#8b949e}
 </nav>
 
 <div class="container-fluid px-4 pt-3 flex-grow-1">
-  {% with messages = get_flashed_messages() %}
-    {% if messages %}<div class="alert alert-info alert-dismissible mb-3 py-2"><button type="button" class="btn-close btn-sm" data-bs-dismiss="alert"></button>{{ messages[0] }}</div>{% endif %}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% set cat, msg = messages[0] %}
+    {% set cls = 'alert-success' if cat=='success' else 'alert-danger' if cat=='danger' else 'alert-info' %}
+    <div id="flash-banner" class="alert {{ cls }} alert-dismissible mb-3 py-2">
+      <button type="button" class="btn-close btn-sm" data-bs-dismiss="alert"></button>
+      {{ msg }}
+    </div>
+    {% endif %}
   {% endwith %}
 
   <ul class="nav nav-tabs mb-4" id="cfgTabs">
@@ -377,11 +389,11 @@ footer a:hover{color:#8b949e}
         <div class="card-body">
           <div class="row g-3 align-items-end">
             <div class="col-auto">
-              <p class="text-muted small mb-2">Download the full configuration as a YAML file.</p>
+              <p style="color:#adbac7;font-size:.85rem;margin-bottom:.5rem">Download the full configuration as a YAML file.</p>
               <a href="/api/backup" class="btn btn-outline-primary btn-sm">Download Backup</a>
             </div>
             <div class="col-md-6">
-              <p class="text-muted small mb-2">Restore a previously downloaded backup. <strong>This overwrites all current settings.</strong></p>
+              <p style="color:#adbac7;font-size:.85rem;margin-bottom:.5rem">Restore a previously downloaded backup. <strong style="color:#e6edf3">Overwrites all current settings. No reboot needed.</strong></p>
               <form method="post" action="/api/restore" enctype="multipart/form-data" class="d-flex gap-2 align-items-center">
                 <input type="file" name="backup_file" accept=".yml,.yaml" class="form-control form-control-sm" required style="max-width:280px">
                 <button type="submit" class="btn btn-warning btn-sm"
@@ -398,11 +410,12 @@ footer a:hover{color:#8b949e}
       <div class="card mb-3" style="border-color:#da3633">
         <div class="card-header" style="color:#f85149;border-bottom-color:#da3633">Factory Reset</div>
         <div class="card-body">
-          <p class="text-muted small mb-3">
-            Erases <strong>all cameras, playlists, and schedules</strong>. Resets admin password to
-            <code>videowall</code>. Starts WiFi Access Point <code>VideoWall-Setup</code>
-            (password: <code>jjsmart123</code>). The screen will show setup instructions.
-          </p>
+          <ul style="color:#adbac7;font-size:.85rem;margin-bottom:1rem;padding-left:1.2rem">
+            <li>Deletes all cameras, playlists, and schedules</li>
+            <li>Resets admin password to <code>videowall</code></li>
+            <li>Starts WiFi hotspot <code>VideoWall-Setup</code> (password: <code>jjsmart123</code>)</li>
+            <li>TV shows setup instructions — <strong style="color:#e6edf3">no reboot needed</strong></li>
+          </ul>
           <button class="btn btn-danger btn-sm" onclick="showResetConfirm()">Factory Reset…</button>
           <form id="reset-form" method="post" action="/api/factory-reset" style="display:none" class="mt-3">
             <div class="alert alert-danger py-2">
@@ -950,6 +963,11 @@ function testEmail(){
   fetch('/api/test-email',{method:'POST'}).then(r=>r.json())
     .then(d=>alert(d.ok ? '✓ '+d.msg : '✗ '+d.msg));
 }
+// Auto-dismiss flash banner after 6 seconds
+(function(){
+  const b = document.getElementById('flash-banner');
+  if(b) setTimeout(()=>{ b.style.transition='opacity .6s'; b.style.opacity='0'; setTimeout(()=>b.remove(),650); }, 6000);
+})();
 </script>
 </body>
 </html>
