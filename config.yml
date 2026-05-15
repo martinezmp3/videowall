@@ -1,80 +1,125 @@
 system:
-  admin_password_hash: "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918"
-  alert_email_from: ""
-  alert_email_to: ""
-  gmail_app_password: ""
+  admin_password_hash: 8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918
+  alert_email_from: ''
+  alert_email_to: ''
+  gmail_app_password: ''
   watchdog_interval: 30
-
 cameras:
-  - id: cam_driveway
-    name: "Driveway"
-    url: "rtsp://192.168.86.233:7447/d9eh8leuMKC5718t"
-    substream: "rtsp://192.168.86.233:7447/PbwGrj1UkxmoQk0F"
-    use_substream: false
-  - id: cam_frontdoor
-    name: "Front Door"
-    url: "rtsp://192.168.86.233:7447/LqWilAyQefPYMtZw"
-    substream: "rtsp://192.168.86.233:7447/8rFAf4Y7OUsjEHc0"
-    use_substream: false
-  - id: cam_backyard
-    name: "Back Yard"
-    url: "rtsp://192.168.86.233:7447/eH1LEipmsDmwRX5P"
-    substream: "rtsp://192.168.86.233:7447/XJPkRfWN4t6XPeQI"
-    use_substream: false
-  - id: cam_trash
-    name: "Trash"
-    url: "rtsp://192.168.86.233:7447/HInhAyRnFaGR0tc5"
-    substream: "rtsp://192.168.86.233:7447/AkM4O6ZWS0vx23jq"
-    use_substream: false
-
+- id: cam_driveway
+  name: Driveway
+  url: rtsp://192.168.86.233:7447/d9eh8leuMKC5718t
+  substream: rtsp://192.168.86.233:7447/PbwGrj1UkxmoQk0F
+  use_substream: false
+- id: cam_frontdoor
+  name: Front Door
+  url: rtsp://192.168.86.233:7447/LqWilAyQefPYMtZw
+  substream: rtsp://192.168.86.233:7447/8rFAf4Y7OUsjEHc0
+  use_substream: false
+- id: cam_backyard
+  name: Back Yard
+  url: rtsp://192.168.86.233:7447/eH1LEipmsDmwRX5P
+  substream: rtsp://192.168.86.233:7447/XJPkRfWN4t6XPeQI
+  use_substream: false
+- id: cam_trash
+  name: Trash
+  url: rtsp://192.168.86.233:7447/HInhAyRnFaGR0tc5
+  substream: rtsp://192.168.86.233:7447/AkM4O6ZWS0vx23jq
+  use_substream: false
+- id: doorbellcam
+  name: Door Bell
+  url: rtsp://192.168.86.233:7447/KL2T8P4SrrM0AItL
+  substream: rtsp://192.168.86.233:7447/EAC08ZaUhojOLCgw
+  use_substream: false
+- id: drivewaytop
+  name: Drive top view
+  url: rtsp://192.168.86.233:7447/aWRz5wBgIrCvilVe
+  substream: rtsp://192.168.86.233:7447/JgCxNHmVrjrnKbOy
+  use_substream: false
+- id: frontyard
+  name: Front Yard
+  url: rtsp://192.168.86.233:7447/jJXGzLQ2PGw1jk3z
+  substream: rtsp://192.168.86.233:7447/LUlolhxFqSbRxpk8
+  use_substream: false
 playlists:
-  - id: pl_business
-    name: "Business Hours"
-    rotation:
-      - name: "Driveway"
-        layout: 1
-        duration: 5
-        cameras: [cam_driveway]
-      - name: "Front Door"
-        layout: 1
-        duration: 5
-        cameras: [cam_frontdoor]
-      - name: "Quad View"
-        layout: 4
-        duration: 10
-        cameras: [cam_driveway, cam_frontdoor, cam_backyard, cam_trash]
-      - name: "Back Yard"
-        layout: 1
-        duration: 5
-        cameras: [cam_backyard]
-      - name: "Trash"
-        layout: 1
-        duration: 5
-        cameras: [cam_trash]
-      - name: "Quad View Long"
-        layout: 4
-        duration: 30
-        cameras: [cam_driveway, cam_frontdoor, cam_backyard, cam_trash]
-  - id: pl_night
-    name: "Night Mode"
-    rotation:
-      - name: "All Cameras"
-        layout: 4
-        duration: 0
-        cameras: [cam_driveway, cam_frontdoor, cam_backyard, cam_trash]
-
+- id: pl_business
+  name: Business Hours
+  rotation:
+  - name: Driveway
+    layout: 1
+    duration: 5
+    cameras:
+    - cam_driveway
+  - name: Front Door
+    layout: 1
+    duration: 5
+    cameras:
+    - cam_frontdoor
+  - name: Quad View
+    layout: 4
+    duration: 10
+    cameras:
+    - cam_driveway
+    - cam_frontdoor
+    - cam_backyard
+    - cam_trash
+  - name: Back Yard
+    layout: 1
+    duration: 5
+    cameras:
+    - cam_backyard
+  - name: Trash
+    layout: 1
+    duration: 5
+    cameras:
+    - cam_trash
+  - name: Quad View Long
+    layout: 4
+    duration: 30
+    cameras:
+    - cam_driveway
+    - cam_frontdoor
+    - cam_backyard
+    - cam_trash
+  - name: DoorBell
+    layout: 1
+    duration: 10
+    cameras:
+    - doorbellcam
+- id: pl_night
+  name: Night Mode
+  rotation:
+  - name: All Cameras
+    layout: 4
+    duration: 0
+    cameras:
+    - cam_driveway
+    - cam_frontdoor
+    - cam_backyard
+    - cam_trash
 monitors:
-  - id: 1
-    name: "Monitor 1"
-    default_playlist: pl_business
-    schedule:
-      - name: "Business Hours"
-        playlist: pl_business
-        days: [mon, tue, wed, thu, fri]
-        start: "08:00"
-        end: "20:00"
-      - name: "Night Mode"
-        playlist: pl_night
-        days: [mon, tue, wed, thu, fri, sat, sun]
-        start: "20:00"
-        end: "08:00"
+- id: 1
+  name: Monitor 1
+  default_playlist: pl_business
+  schedule:
+  - name: Business Hours
+    playlist: pl_business
+    days:
+    - mon
+    - tue
+    - wed
+    - thu
+    - fri
+    start: 08:00
+    end: '20:00'
+  - name: Night Mode
+    playlist: pl_night
+    days:
+    - mon
+    - tue
+    - wed
+    - thu
+    - fri
+    - sat
+    - sun
+    start: '20:00'
+    end: 08:00

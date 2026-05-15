@@ -11,26 +11,40 @@ body{background:#0d1117;color:#e6edf3;font-family:system-ui,sans-serif;min-heigh
 .card-header{background:#1c2128;border-bottom:1px solid #30363d;font-weight:600;font-size:.88rem}
 .nav-tabs{border-bottom:1px solid #30363d}
 .nav-tabs .nav-link{color:#8b949e;border:none;border-bottom:2px solid transparent;padding:.5rem 1.1rem;font-size:.88rem;background:none}
-.nav-tabs .nav-link:hover{color:#e6edf3;border-color:transparent}
+.nav-tabs .nav-link:hover{color:#e6edf3}
 .nav-tabs .nav-link.active{color:#58a6ff;border-bottom:2px solid #58a6ff;background:none}
 .form-control,.form-select{background:#0d1117;color:#e6edf3;border:1px solid #30363d;font-size:.85rem}
 .form-control:focus,.form-select:focus{background:#0d1117;color:#e6edf3;border-color:#58a6ff;box-shadow:none}
 label{color:#8b949e;font-size:.78rem;margin-bottom:.2rem;display:block}
+/* Camera cards */
 .cam-card{background:#1c2128;border:1px solid #30363d;border-radius:8px;overflow:hidden;position:relative;height:100%}
 .cam-card img{width:100%;height:120px;object-fit:cover;display:block;background:#0d1117}
 .cam-info{padding:.6rem}
 .cam-name{font-weight:600;font-size:.85rem}
-.cam-url{color:#8b949e;font-size:.68rem;word-break:break-all;margin-top:.2rem}
-.snap-btn{position:absolute;top:5px;right:5px;background:rgba(0,0,0,.6);border:1px solid #30363d;color:#e6edf3;font-size:.65rem;padding:2px 6px;border-radius:4px;cursor:pointer}
+.cam-url{color:#8b949e;font-size:.68rem;word-break:break-all;margin-top:.15rem}
+.cam-overlay{position:absolute;top:5px;right:5px;display:flex;gap:4px}
+.overlay-btn{background:rgba(13,17,23,.75);border:1px solid #30363d;color:#e6edf3;font-size:.65rem;padding:2px 7px;border-radius:4px;cursor:pointer;white-space:nowrap}
+.overlay-btn:hover{background:#1c2128}
+/* Playlist steps */
 .step-block{background:#1c2128;border:1px solid #30363d;border-radius:8px;padding:.9rem;margin-bottom:.7rem}
 .cam-thumb{width:56px;height:38px;object-fit:cover;border-radius:4px;background:#0d1117;border:1px solid #30363d;display:inline-block;vertical-align:middle}
+/* Schedule rules */
 .schedule-rule{background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:.75rem;margin-bottom:.6rem}
-.day-check .form-check-label{font-size:.78rem}
+.day-pill{display:inline-block;padding:.1rem .45rem;border-radius:10px;font-size:.65rem;font-weight:600}
+.day-on{background:#1f6feb;color:#fff}
+.day-off{background:#21262d;color:#484f58}
+/* Misc */
 .badge-pl{background:#1f6feb;font-size:.7rem}
 .section-lbl{color:#58a6ff;font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;font-weight:600;margin-bottom:.6rem;margin-top:1rem}
-.btn-xs{font-size:.72rem;padding:.15rem .45rem}
+.btn-xs{font-size:.72rem;padding:.15rem .5rem}
+/* Modals */
+.modal-content{background:#161b22;border:1px solid #30363d;color:#e6edf3}
+.modal-header{background:#1c2128;border-bottom:1px solid #30363d}
+.modal-footer{background:#1c2128;border-top:1px solid #30363d}
+.btn-close{filter:invert(1) grayscale(1)}
 footer{color:#484f58;font-size:.72rem;text-align:center;padding:1.2rem;margin-top:auto;border-top:1px solid #21262d}
 footer a{color:#484f58;text-decoration:none}
+footer a:hover{color:#8b949e}
 </style>
 </head>
 <body>
@@ -48,7 +62,7 @@ footer a{color:#484f58;text-decoration:none}
   {% endwith %}
 
   <ul class="nav nav-tabs mb-4" id="cfgTabs">
-    <li class="nav-item"><a class="nav-link active" href="#cameras"  data-bs-toggle="tab">Cameras</a></li>
+    <li class="nav-item"><a class="nav-link active" href="#cameras"   data-bs-toggle="tab">Cameras</a></li>
     <li class="nav-item"><a class="nav-link"        href="#playlists" data-bs-toggle="tab">Playlists</a></li>
     <li class="nav-item"><a class="nav-link"        href="#schedule"  data-bs-toggle="tab">Schedule</a></li>
     <li class="nav-item"><a class="nav-link"        href="#system"    data-bs-toggle="tab">System</a></li>
@@ -56,7 +70,7 @@ footer a{color:#484f58;text-decoration:none}
 
   <div class="tab-content">
 
-    <!-- ══ CAMERAS TAB ══════════════════════════════════════════ -->
+    <!-- ══ CAMERAS ══════════════════════════════════════════════ -->
     <div class="tab-pane fade show active" id="cameras">
       <div class="row g-3 mb-4">
         {% for cam in cfg.get('cameras',[]) %}
@@ -64,14 +78,17 @@ footer a{color:#484f58;text-decoration:none}
           <div class="cam-card">
             <img src="/static/snapshots/{{ cam.id }}.jpg" id="snap-{{ cam.id }}"
                  onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22120%22%3E%3Crect fill=%22%230d1117%22 width=%22200%22 height=%22120%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 fill=%22%2330363d%22 font-size=%2213%22 text-anchor=%22middle%22 dy=%22.3em%22%3ENo snapshot%3C/text%3E%3C/svg%3E'">
-            <button class="snap-btn" onclick="refreshSnap('{{ cam.id }}')">&#x21bb; snap</button>
+            <div class="cam-overlay">
+              <span class="overlay-btn" onclick="refreshSnap('{{ cam.id }}')">&#x21bb;</span>
+              <span class="overlay-btn" onclick="openCamEdit('{{ cam.id }}','{{ cam.name }}','{{ cam.url }}','{{ cam.substream or '' }}','{{ cam.use_substream }}')">Edit</span>
+            </div>
             <div class="cam-info">
               <div class="cam-name">{{ cam.name }}</div>
               <div class="cam-url">{{ cam.url }}</div>
               {% if cam.substream %}
               <div class="mt-1">
                 <span class="badge {% if cam.use_substream %}bg-warning text-dark{% else %}bg-success{% endif %}" style="font-size:.65rem">
-                  {{ 'LOW stream active' if cam.use_substream else 'HIGH stream active' }}
+                  {{ 'LOW stream' if cam.use_substream else 'HIGH stream' }}
                 </span>
               </div>
               {% endif %}
@@ -105,7 +122,7 @@ footer a{color:#484f58;text-decoration:none}
       </form>
     </div>
 
-    <!-- ══ PLAYLISTS TAB ════════════════════════════════════════ -->
+    <!-- ══ PLAYLISTS ═════════════════════════════════════════════ -->
     <div class="tab-pane fade" id="playlists">
       {% for pl in cfg.get('playlists',[]) %}
       <div class="card">
@@ -124,15 +141,13 @@ footer a{color:#484f58;text-decoration:none}
               <input type="hidden" name="step_idx" value="{{ step_idx }}">
               <div class="row g-2 align-items-end mb-2">
                 <div class="col-md-3"><label>Step Name</label><input name="step_name" class="form-control form-control-sm" value="{{ step.name }}"></div>
-                <div class="col-md-2">
-                  <label>Layout</label>
+                <div class="col-md-2"><label>Layout</label>
                   <select name="layout" class="form-select form-select-sm">
                     {% for n in [1,2,4,6,9,16] %}<option value="{{ n }}" {{ 'selected' if step.layout==n }}>{{ n }} cam{{ 's' if n>1 }}</option>{% endfor %}
                   </select>
                 </div>
                 <div class="col-md-2"><label>Duration (sec, 0=static)</label><input name="duration" type="number" class="form-control form-control-sm" value="{{ step.duration }}" min="0"></div>
-                <div class="col-md-5">
-                  <label>Cameras</label>
+                <div class="col-md-5"><label>Cameras</label>
                   <div class="d-flex flex-wrap gap-2">
                     {% for cam in cfg.get('cameras',[]) %}
                     <div class="form-check form-check-inline mb-0">
@@ -145,14 +160,10 @@ footer a{color:#484f58;text-decoration:none}
                   </div>
                 </div>
               </div>
-              <!-- Thumbs -->
               <div class="mb-2">
-                {% for cid in step.get('cameras',[]) %}
-                  {% for cam in cfg.get('cameras',[]) %}{% if cam.id==cid %}
-                  <img src="/static/snapshots/{{ cam.id }}.jpg" class="cam-thumb me-1" title="{{ cam.name }}"
-                       onerror="this.style.background='#21262d'">
-                  {% endif %}{% endfor %}
-                {% endfor %}
+                {% for cid in step.get('cameras',[]) %}{% for cam in cfg.get('cameras',[]) %}{% if cam.id==cid %}
+                <img src="/static/snapshots/{{ cam.id }}.jpg" class="cam-thumb me-1" title="{{ cam.name }}" onerror="this.style.background='#21262d'">
+                {% endif %}{% endfor %}{% endfor %}
               </div>
               <div class="d-flex gap-1">
                 <button class="btn btn-primary btn-xs">Save</button>
@@ -161,15 +172,9 @@ footer a{color:#484f58;text-decoration:none}
                 <button type="submit" form="dl_{{ pl.id }}_{{ step_idx }}" class="btn btn-outline-danger btn-xs" onclick="return confirm('Remove step?')">Delete</button>
               </div>
             </form>
-            <form id="mv_{{ pl.id }}_{{ step_idx }}_up" method="post" action="/api/playlist/step/move">
-              <input type="hidden" name="pl_id" value="{{ pl.id }}"><input type="hidden" name="step_idx" value="{{ step_idx }}"><input type="hidden" name="direction" value="up">
-            </form>
-            <form id="mv_{{ pl.id }}_{{ step_idx }}_dn" method="post" action="/api/playlist/step/move">
-              <input type="hidden" name="pl_id" value="{{ pl.id }}"><input type="hidden" name="step_idx" value="{{ step_idx }}"><input type="hidden" name="direction" value="down">
-            </form>
-            <form id="dl_{{ pl.id }}_{{ step_idx }}" method="post" action="/api/playlist/step/delete">
-              <input type="hidden" name="pl_id" value="{{ pl.id }}"><input type="hidden" name="step_idx" value="{{ step_idx }}">
-            </form>
+            <form id="mv_{{ pl.id }}_{{ step_idx }}_up" method="post" action="/api/playlist/step/move"><input type="hidden" name="pl_id" value="{{ pl.id }}"><input type="hidden" name="step_idx" value="{{ step_idx }}"><input type="hidden" name="direction" value="up"></form>
+            <form id="mv_{{ pl.id }}_{{ step_idx }}_dn" method="post" action="/api/playlist/step/move"><input type="hidden" name="pl_id" value="{{ pl.id }}"><input type="hidden" name="step_idx" value="{{ step_idx }}"><input type="hidden" name="direction" value="down"></form>
+            <form id="dl_{{ pl.id }}_{{ step_idx }}" method="post" action="/api/playlist/step/delete"><input type="hidden" name="pl_id" value="{{ pl.id }}"><input type="hidden" name="step_idx" value="{{ step_idx }}"></form>
           </div>
           {% endfor %}
 
@@ -197,43 +202,41 @@ footer a{color:#484f58;text-decoration:none}
       </form>
     </div>
 
-    <!-- ══ SCHEDULE TAB ═════════════════════════════════════════ -->
+    <!-- ══ SCHEDULE ══════════════════════════════════════════════ -->
     <div class="tab-pane fade" id="schedule">
       {% for mon_idx, mon in enumerate(cfg.get('monitors',[])) %}
       <div class="card">
         <div class="card-header">{{ mon.name }} — Schedule</div>
         <div class="card-body">
 
-          <!-- Default playlist -->
           <div class="mb-3 d-flex align-items-center gap-3">
             <form method="post" action="/api/schedule/set-default" class="d-flex align-items-center gap-2">
               <input type="hidden" name="monitor_id" value="{{ mon_idx+1 }}">
-              <label class="mb-0">Default Playlist (when no rule matches):</label>
+              <label class="mb-0" style="white-space:nowrap">Default Playlist (no rule active):</label>
               <select name="playlist" class="form-select form-select-sm" style="width:auto">
-                {% for pl in cfg.get('playlists',[]) %}
-                <option value="{{ pl.id }}" {{ 'selected' if mon.get('default_playlist')==pl.id }}>{{ pl.name }}</option>
-                {% endfor %}
+                {% for pl in cfg.get('playlists',[]) %}<option value="{{ pl.id }}" {{ 'selected' if mon.get('default_playlist')==pl.id }}>{{ pl.name }}</option>{% endfor %}
               </select>
-              <button class="btn btn-outline-secondary btn-xs">Set Default</button>
+              <button class="btn btn-outline-secondary btn-xs">Set</button>
             </form>
           </div>
 
-          <!-- Existing rules -->
           {% for rule_idx, rule in enumerate(mon.get('schedule',[])) %}
           <div class="schedule-rule">
             <div class="row align-items-center g-2">
               <div class="col-md-2 fw-bold" style="font-size:.85rem">{{ rule.name }}</div>
               <div class="col-md-2"><span class="badge badge-pl">{{ rule.playlist }}</span></div>
-              <div class="col-md-4">
-                <div class="d-flex flex-wrap gap-1">
-                  {% for day in ['mon','tue','wed','thu','fri','sat','sun'] %}
-                  <span class="badge {% if day in rule.get('days',[]) %}bg-primary{% else %}bg-secondary{% endif %}" style="font-size:.65rem">{{ day }}</span>
-                  {% endfor %}
-                </div>
+              <div class="col-md-3">
+                {% for day in ['mon','tue','wed','thu','fri','sat','sun'] %}
+                <span class="day-pill {{ 'day-on' if day in rule.get('days',[]) else 'day-off' }}">{{ day }}</span>
+                {% endfor %}
               </div>
-              <div class="col-md-2 text-muted" style="font-size:.82rem">{{ rule.start }} → {{ rule.end }}</div>
-              <div class="col-md-2">
-                <form method="post" action="/api/schedule/delete" onsubmit="return confirm('Remove this rule?')">
+              <div class="col-md-2" style="font-size:.82rem;color:#8b949e">{{ rule.start }} → {{ rule.end }}</div>
+              <div class="col-md-3 d-flex gap-1">
+                <button class="btn btn-outline-primary btn-xs"
+                  onclick="openRuleEdit({{ mon_idx+1 }}, {{ rule_idx }}, '{{ rule.name }}', '{{ rule.playlist }}', {{ rule.get('days',[]) | tojson }}, '{{ rule.start }}', '{{ rule.end }}')">
+                  Edit
+                </button>
+                <form method="post" action="/api/schedule/delete" onsubmit="return confirm('Remove this rule?')" style="display:inline">
                   <input type="hidden" name="monitor_id" value="{{ mon_idx+1 }}">
                   <input type="hidden" name="rule_idx" value="{{ rule_idx }}">
                   <button class="btn btn-outline-danger btn-xs">Remove</button>
@@ -243,52 +246,36 @@ footer a{color:#484f58;text-decoration:none}
           </div>
           {% endfor %}
 
-          <!-- Add rule -->
           <div class="section-lbl">Add Schedule Rule</div>
           <form method="post" action="/api/schedule/add">
             <input type="hidden" name="monitor_id" value="{{ mon_idx+1 }}">
             <div class="row g-2 mb-2">
               <div class="col-md-2"><label>Rule Name</label><input name="rule_name" class="form-control form-control-sm" placeholder="Business Hours" required></div>
-              <div class="col-md-2">
-                <label>Playlist</label>
-                <select name="playlist" class="form-select form-select-sm">
-                  {% for pl in cfg.get('playlists',[]) %}<option value="{{ pl.id }}">{{ pl.name }}</option>{% endfor %}
-                </select>
+              <div class="col-md-2"><label>Playlist</label>
+                <select name="playlist" class="form-select form-select-sm">{% for pl in cfg.get('playlists',[]) %}<option value="{{ pl.id }}">{{ pl.name }}</option>{% endfor %}</select>
               </div>
               <div class="col-md-2"><label>Start</label><input name="start" type="time" class="form-control form-control-sm" value="08:00" required></div>
               <div class="col-md-2"><label>End</label><input name="end" type="time" class="form-control form-control-sm" value="20:00" required></div>
-              <div class="col-md-4">
-                <label>Days</label>
-                <div class="d-flex gap-2 flex-wrap day-check">
-                  {% for day,label in [('mon','Mon'),('tue','Tue'),('wed','Wed'),('thu','Thu'),('fri','Fri'),('sat','Sat'),('sun','Sun')] %}
+              <div class="col-md-4"><label>Days</label>
+                <div class="d-flex gap-2 flex-wrap">
+                  {% for day,lbl in [('mon','Mon'),('tue','Tue'),('wed','Wed'),('thu','Thu'),('fri','Fri'),('sat','Sat'),('sun','Sun')] %}
                   <div class="form-check form-check-inline mb-0">
-                    <input class="form-check-input" type="checkbox" name="days" value="{{ day }}" id="d_{{ mon_idx }}_{{ day }}"
-                           {{ 'checked' if day in ['mon','tue','wed','thu','fri'] }}>
-                    <label class="form-check-label" for="d_{{ mon_idx }}_{{ day }}">{{ label }}</label>
+                    <input class="form-check-input" type="checkbox" name="days" value="{{ day }}" id="nd_{{ mon_idx }}_{{ day }}" {{ 'checked' if day in ['mon','tue','wed','thu','fri'] }}>
+                    <label class="form-check-label" for="nd_{{ mon_idx }}_{{ day }}">{{ lbl }}</label>
                   </div>
                   {% endfor %}
                 </div>
               </div>
             </div>
             <button class="btn btn-success btn-sm">Add Rule</button>
-            <small class="text-muted ms-2">Overnight schedules (e.g. 20:00 → 08:00) are supported</small>
+            <small class="text-muted ms-2">Overnight (e.g. 20:00→08:00) supported</small>
           </form>
         </div>
       </div>
       {% endfor %}
-
-      <div class="card">
-        <div class="card-header">Add Monitor</div>
-        <div class="card-body">
-          <form method="post" action="/api/schedule/add" class="row g-2 align-items-end">
-            <div class="col-md-3"><label>Monitor Name</label><input name="monitor_name" class="form-control form-control-sm" placeholder="Monitor 2" required></div>
-            <div class="col-md-2 d-flex align-items-end"><a href="#" class="btn btn-primary btn-sm w-100" onclick="alert('Use the API — coming soon')">Add Monitor</a></div>
-          </form>
-        </div>
-      </div>
     </div>
 
-    <!-- ══ SYSTEM TAB ═══════════════════════════════════════════ -->
+    <!-- ══ SYSTEM ════════════════════════════════════════════════ -->
     <div class="tab-pane fade" id="system">
       <div class="card">
         <div class="card-header">Email Alerts</div>
@@ -296,9 +283,9 @@ footer a{color:#484f58;text-decoration:none}
           <form method="post" action="/api/system/save">
             <div class="row g-3">
               <div class="col-md-4"><label>Gmail Address (sender)</label><input type="email" name="email_from" class="form-control form-control-sm" value="{{ cfg.system.alert_email_from or '' }}"></div>
-              <div class="col-md-4"><label>Alert Recipient Email</label><input type="email" name="email_to" class="form-control form-control-sm" value="{{ cfg.system.alert_email_to or '' }}"></div>
+              <div class="col-md-4"><label>Alert Recipient</label><input type="email" name="email_to" class="form-control form-control-sm" value="{{ cfg.system.alert_email_to or '' }}"></div>
               <div class="col-md-4"><label>Gmail App Password</label><input type="password" name="gmail_pass" class="form-control form-control-sm" placeholder="Leave blank to keep current"></div>
-              <div class="col-md-3"><label>Watchdog Interval (seconds)</label><input type="number" name="watchdog_interval" class="form-control form-control-sm" value="{{ cfg.system.watchdog_interval or 30 }}"></div>
+              <div class="col-md-3"><label>Watchdog Interval (sec)</label><input type="number" name="watchdog_interval" class="form-control form-control-sm" value="{{ cfg.system.watchdog_interval or 30 }}"></div>
               <div class="col-md-4"><label>New Admin Password</label><input type="password" name="new_password" class="form-control form-control-sm" placeholder="Leave blank to keep current"></div>
             </div>
             <div class="mt-3 d-flex gap-2">
@@ -318,7 +305,104 @@ footer a{color:#484f58;text-decoration:none}
       </div>
     </div>
 
-  </div><!-- tab-content -->
+  </div><!-- /tab-content -->
+</div><!-- /container -->
+
+<!-- ══ CAMERA EDIT MODAL ════════════════════════════════════════ -->
+<div class="modal fade" id="camEditModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title">Edit Camera</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="/api/camera/update">
+        <div class="modal-body">
+          <input type="hidden" name="cam_id" id="edit_cam_id">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label>Display Name</label>
+              <input name="cam_name" id="edit_cam_name" class="form-control" required>
+            </div>
+            <div class="col-md-8">
+              <label>Main Stream URL (high res)</label>
+              <input name="cam_url" id="edit_cam_url" class="form-control" placeholder="rtsp://..." required>
+            </div>
+            <div class="col-md-12">
+              <label>Sub Stream URL (low res, optional)</label>
+              <input name="cam_sub" id="edit_cam_sub" class="form-control" placeholder="rtsp://... or leave blank">
+            </div>
+          </div>
+          <div class="mt-3">
+            <div class="text-muted" style="font-size:.8rem">Camera ID: <code id="edit_cam_id_display" style="color:#58a6ff"></code> — cannot be changed</div>
+            <div class="text-muted mt-1" style="font-size:.78rem">If the stream URL changes, a new snapshot will be captured automatically.</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SCHEDULE RULE EDIT MODAL ═════════════════════════════════ -->
+<div class="modal fade" id="ruleEditModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title">Edit Schedule Rule</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="/api/schedule/update">
+        <div class="modal-body">
+          <input type="hidden" name="monitor_id" id="edit_mon_id">
+          <input type="hidden" name="rule_idx"   id="edit_rule_idx">
+          <div class="row g-3 mb-3">
+            <div class="col-md-4">
+              <label>Rule Name</label>
+              <input name="rule_name" id="edit_rule_name" class="form-control" required>
+            </div>
+            <div class="col-md-4">
+              <label>Playlist</label>
+              <select name="playlist" id="edit_playlist" class="form-select">
+                {% for pl in cfg.get('playlists',[]) %}
+                <option value="{{ pl.id }}">{{ pl.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-3">
+              <label>Start Time</label>
+              <input name="start" id="edit_start" type="time" class="form-control" required>
+            </div>
+            <div class="col-md-3">
+              <label>End Time</label>
+              <input name="end" id="edit_end" type="time" class="form-control" required>
+              <small class="text-muted">Overnight (e.g. 20:00→08:00) supported</small>
+            </div>
+          </div>
+          <div>
+            <label>Active Days</label>
+            <div class="d-flex gap-3 flex-wrap mt-1">
+              {% for day,lbl in [('mon','Monday'),('tue','Tuesday'),('wed','Wednesday'),('thu','Thursday'),('fri','Friday'),('sat','Saturday'),('sun','Sunday')] %}
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="days" value="{{ day }}" id="edit_day_{{ day }}">
+                <label class="form-check-label" for="edit_day_{{ day }}" style="font-size:.85rem">{{ lbl }}</label>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 
 <footer>
@@ -329,24 +413,52 @@ footer a{color:#484f58;text-decoration:none}
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-// Activate tab from URL hash
+// Activate correct tab from URL hash on page load
 const hash = location.hash;
 if(hash){
   const tab = document.querySelector(`.nav-tabs a[href="${hash}"]`);
   if(tab) new bootstrap.Tab(tab).show();
 }
+
+// Camera snapshot refresh
 function refreshSnap(id){
-  const img=document.getElementById('snap-'+id);
-  img.style.opacity='.3';
-  fetch('/api/snapshot/'+id,{method:'POST'}).then(r=>r.json()).then(d=>{
-    if(d.ok){img.src=d.url;}
-    else{alert('Snapshot failed: '+d.msg);}
-    img.style.opacity='1';
+  const img = document.getElementById('snap-'+id);
+  img.style.opacity = '.3';
+  fetch('/api/snapshot/'+id, {method:'POST'}).then(r=>r.json()).then(d=>{
+    img.style.opacity = '1';
+    if(d.ok) img.src = d.url;
+    else alert('Snapshot failed: '+d.msg);
   });
 }
+
+// Open camera edit modal, pre-filled
+function openCamEdit(id, name, url, sub, useSub){
+  document.getElementById('edit_cam_id').value         = id;
+  document.getElementById('edit_cam_id_display').textContent = id;
+  document.getElementById('edit_cam_name').value        = name;
+  document.getElementById('edit_cam_url').value         = url;
+  document.getElementById('edit_cam_sub').value         = sub;
+  new bootstrap.Modal(document.getElementById('camEditModal')).show();
+}
+
+// Open schedule rule edit modal, pre-filled
+function openRuleEdit(monId, ruleIdx, name, playlist, days, start, end){
+  document.getElementById('edit_mon_id').value    = monId;
+  document.getElementById('edit_rule_idx').value  = ruleIdx;
+  document.getElementById('edit_rule_name').value = name;
+  document.getElementById('edit_playlist').value  = playlist;
+  document.getElementById('edit_start').value     = start;
+  document.getElementById('edit_end').value       = end;
+  // Reset all day checkboxes then check active ones
+  ['mon','tue','wed','thu','fri','sat','sun'].forEach(d => {
+    document.getElementById('edit_day_'+d).checked = days.includes(d);
+  });
+  new bootstrap.Modal(document.getElementById('ruleEditModal')).show();
+}
+
 function testEmail(){
   fetch('/api/test-email',{method:'POST'}).then(r=>r.json())
-    .then(d=>alert(d.ok?'✓ '+d.msg:'✗ '+d.msg));
+    .then(d=>alert(d.ok ? '✓ '+d.msg : '✗ '+d.msg));
 }
 </script>
 </body>

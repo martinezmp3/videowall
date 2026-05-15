@@ -328,5 +328,45 @@ def test_email():
     except Exception as e:
         return jsonify({'ok':False,'msg':str(e)})
 
+@app.route('/api/camera/update', methods=['POST'])
+@login_required
+def camera_update():
+    cfg = load_config()
+    cam_id = request.form.get('cam_id','')
+    for cam in cfg.get('cameras',[]):
+        if cam['id'] == cam_id:
+            cam['name']      = request.form.get('cam_name', cam['name']).strip()
+            new_url          = request.form.get('cam_url', cam['url']).strip()
+            url_changed      = new_url != cam['url']
+            cam['url']       = new_url
+            cam['substream'] = request.form.get('cam_sub', cam.get('substream','')).strip()
+            save_config(cfg)
+            if url_changed:
+                threading.Thread(target=take_snap_bg, args=(cam_id, new_url), daemon=True).start()
+            flash(f"Camera '{cam['name']}' updated")
+            subprocess.run(['systemctl','restart','videowall-display'], check=False)
+            break
+    return redirect(url_for('config_page')+'#cameras')
+
+@app.route('/api/schedule/update', methods=['POST'])
+@login_required
+def schedule_update():
+    cfg = load_config()
+    mon_idx  = int(request.form.get('monitor_id',1)) - 1
+    rule_idx = int(request.form.get('rule_idx',0))
+    try:
+        rule = cfg['monitors'][mon_idx]['schedule'][rule_idx]
+        rule['name']     = request.form.get('rule_name', rule['name'])
+        rule['playlist'] = request.form.get('playlist', rule['playlist'])
+        rule['days']     = request.form.getlist('days')
+        rule['start']    = request.form.get('start', rule['start'])
+        rule['end']      = request.form.get('end', rule['end'])
+        save_config(cfg)
+        flash('Schedule rule updated')
+        subprocess.run(['systemctl','restart','videowall-display'], check=False)
+    except IndexError:
+        flash('Invalid rule')
+    return redirect(url_for('config_page')+'#schedule')
+
 if __name__=='__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
