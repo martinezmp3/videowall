@@ -1,135 +1,231 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>VideoWall Config</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
 <style>
-body { background:#1a1a2e; color:#eee; }
-.navbar { background:#0f3460 !important; }
-.card { background:#16213e; border:1px solid #0f3460; color:#eee; margin-bottom:1rem; }
-.card-header { background:#0f3460; font-weight:bold; }
-.form-control, .form-select { background:#1a1a2e; color:#eee; border-color:#0f3460; }
-.form-control:focus, .form-select:focus { background:#1a1a2e; color:#eee; border-color:#e94560; box-shadow:none; }
-.table { color:#eee; }
-.table td, .table th { border-color:#0f3460; }
+body{background:#0d1117;color:#e6edf3;font-family:system-ui,sans-serif}
+.navbar{background:#161b22!important;border-bottom:1px solid #30363d}
+.card{background:#161b22;border:1px solid #30363d;color:#e6edf3;margin-bottom:1.2rem}
+.card-header{background:#1c2128;border-bottom:1px solid #30363d;font-weight:600}
+.form-control,.form-select{background:#0d1117;color:#e6edf3;border-color:#30363d}
+.form-control:focus,.form-select:focus{background:#0d1117;color:#e6edf3;border-color:#58a6ff;box-shadow:none}
+.cam-card{background:#1c2128;border:1px solid #30363d;border-radius:8px;padding:0;overflow:hidden;position:relative}
+.cam-card img{width:100%;height:130px;object-fit:cover;background:#0d1117;display:block}
+.cam-card .cam-info{padding:.6rem}
+.cam-card .cam-name{font-weight:600;font-size:.9rem}
+.cam-card .cam-url{color:#8b949e;font-size:.7rem;word-break:break-all}
+.snap-badge{position:absolute;top:6px;right:6px}
+.step-card{background:#1c2128;border:1px solid #30363d;border-radius:8px;padding:.9rem;margin-bottom:.7rem}
+.step-card .cam-thumb{width:60px;height:40px;object-fit:cover;border-radius:4px;background:#0d1117;border:1px solid #30363d}
+.step-card .cam-slot{display:inline-block;margin:2px}
+.badge-sub{background:#b08800;font-size:.65rem}
+.badge-main{background:#1a5c38;font-size:.65rem}
+label{color:#8b949e;font-size:.82rem;margin-bottom:.2rem}
+.section-title{color:#58a6ff;font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.8rem;font-weight:600}
 </style>
 </head>
 <body>
-<nav class="navbar navbar-dark mb-4">
-  <div class="container-fluid">
-    <span class="navbar-brand">VideoWall Config</span>
-    <div>
-      <a href="/" class="btn btn-outline-light btn-sm me-2">Dashboard</a>
-      <a href="/logout" class="btn btn-outline-danger btn-sm">Logout</a>
-    </div>
+<nav class="navbar navbar-dark mb-4 px-3">
+  <span class="navbar-brand fw-bold">VideoWall Config</span>
+  <div class="d-flex gap-2">
+    <a href="/" class="btn btn-outline-secondary btn-sm">Dashboard</a>
+    <a href="/logout" class="btn btn-outline-danger btn-sm">Logout</a>
   </div>
 </nav>
 <div class="container-fluid px-4">
   {% with messages = get_flashed_messages() %}
-    {% if messages %}
-    <div class="alert alert-info">{{ messages[0] }}</div>
-    {% endif %}
+    {% if messages %}<div class="alert alert-info alert-dismissible"><button type="button" class="btn-close" data-bs-dismiss="alert"></button>{{ messages[0] }}</div>{% endif %}
   {% endwith %}
 
-  <!-- System Settings -->
+  <!-- ── CAMERA LIBRARY ── -->
   <div class="card">
-    <div class="card-header">System Settings</div>
+    <div class="card-header">Camera Library</div>
     <div class="card-body">
-      <form method="post">
-        <input type="hidden" name="action" value="system">
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label class="form-label">Alert Email From (Gmail)</label>
-            <input type="email" name="email_from" class="form-control" value="{{ cfg.system.alert_email_from or '' }}">
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Alert Email To</label>
-            <input type="email" name="email_to" class="form-control" value="{{ cfg.system.alert_email_to or '' }}">
-          </div>
-          <div class="col-md-6">
-            <label class="form-label">Gmail App Password</label>
-            <input type="password" name="gmail_pass" class="form-control" placeholder="16-char app password">
-          </div>
-          <div class="col-md-3">
-            <label class="form-label">Watchdog Interval (seconds)</label>
-            <input type="number" name="watchdog_interval" class="form-control" value="{{ cfg.system.watchdog_interval or 30 }}">
-          </div>
-          <div class="col-md-3">
-            <label class="form-label">New Admin Password</label>
-            <input type="password" name="new_password" class="form-control" placeholder="Leave blank to keep current">
+      <div class="row g-3 mb-4" id="cam-grid">
+        {% for cam in cfg.get('cameras', []) %}
+        <div class="col-6 col-md-4 col-lg-3">
+          <div class="cam-card">
+            {% set snap = '/static/snapshots/' + cam.id + '.jpg' %}
+            <img src="{{ snap }}" id="snap-{{ cam.id }}"
+                 onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22130%22><rect width=%22200%22 height=%22130%22 fill=%22%230d1117%22/><text x=%2250%%22 y=%2250%%22 fill=%22%2330363d%22 font-size=%2214%22 text-anchor=%22middle%22 dy=%22.3em%22>No snapshot</text></svg>'">
+            <span class="snap-badge">
+              <button class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size:.65rem"
+                onclick="refreshSnap('{{ cam.id }}')">&#x21bb; snap</button>
+            </span>
+            <div class="cam-info">
+              <div class="cam-name">{{ cam.name }}</div>
+              <div class="cam-url mt-1">{{ cam.url }}</div>
+              {% if cam.substream %}
+              <div class="mt-1">
+                <span class="badge {{ 'badge-sub' if cam.use_substream else 'badge-main' }}">
+                  {{ 'LOW stream' if cam.use_substream else 'HIGH stream' }}
+                </span>
+              </div>
+              {% endif %}
+              <div class="mt-2 d-flex gap-1 flex-wrap">
+                {% if cam.substream %}
+                <form method="post" style="display:inline">
+                  <input type="hidden" name="action" value="toggle_substream">
+                  <input type="hidden" name="cam_id" value="{{ cam.id }}">
+                  <button class="btn btn-sm btn-outline-warning py-0" style="font-size:.7rem">Toggle Hi/Low</button>
+                </form>
+                {% endif %}
+                <form method="post" style="display:inline" onsubmit="return confirm('Remove {{ cam.name }}?')">
+                  <input type="hidden" name="action" value="del_camera">
+                  <input type="hidden" name="cam_id" value="{{ cam.id }}">
+                  <button class="btn btn-sm btn-outline-danger py-0" style="font-size:.7rem">Remove</button>
+                </form>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="mt-3 d-flex gap-2">
-          <button type="submit" class="btn btn-primary">Save & Restart Display</button>
-          <button type="button" class="btn btn-outline-light" onclick="testEmail()">Test Email Alert</button>
+        {% endfor %}
+      </div>
+
+      <!-- Add Camera -->
+      <div class="section-title">Add Camera</div>
+      <form method="post">
+        <input type="hidden" name="action" value="add_camera">
+        <div class="row g-2">
+          <div class="col-md-2">
+            <label>ID (no spaces)</label>
+            <input name="cam_id" class="form-control form-control-sm" placeholder="cam_entrance" required>
+          </div>
+          <div class="col-md-2">
+            <label>Name</label>
+            <input name="cam_name" class="form-control form-control-sm" placeholder="Entrance" required>
+          </div>
+          <div class="col-md-3">
+            <label>Main Stream URL (high)</label>
+            <input name="cam_url" class="form-control form-control-sm" placeholder="rtsp://..." required>
+          </div>
+          <div class="col-md-3">
+            <label>Sub Stream URL (low, optional)</label>
+            <input name="cam_sub" class="form-control form-control-sm" placeholder="rtsp://...">
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <button class="btn btn-success btn-sm w-100">Add & Snapshot</button>
+          </div>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- Monitors & Cameras -->
-  {% for mon_idx, mon in enumerate(cfg.monitors) %}
+  <!-- ── ROTATION BUILDER ── -->
+  {% for mon_idx, mon in enumerate(cfg.get('monitors', [])) %}
   <div class="card">
-    <div class="card-header">{{ mon.name }} (Monitor {{ mon_idx + 1 }})</div>
+    <div class="card-header">{{ mon.name }} — Rotation Sequence</div>
     <div class="card-body">
-      {% for scr_idx, scr in enumerate(mon.screens) %}
-      <div class="mb-4">
-        <h6 class="text-warning">Screen: {{ scr.name }} | Layout: {{ scr.layout }} cameras | Rotation: {{ scr.duration }}s {{ '(static)' if scr.duration == 0 else '' }}</h6>
-        <table class="table table-sm">
-          <thead><tr><th>#</th><th>Name</th><th>RTSP URL</th><th>Substream</th><th>Action</th></tr></thead>
-          <tbody>
-          {% for cam_idx, cam in enumerate(scr.cameras) %}
-          <tr>
-            <td>{{ cam_idx + 1 }}</td>
-            <td>{{ cam.name }}</td>
-            <td><small>{{ cam.url }}</small></td>
-            <td><small>{{ cam.substream or '-' }}</small></td>
-            <td>
-              <form method="post" style="display:inline">
-                <input type="hidden" name="action" value="del_camera">
-                <input type="hidden" name="monitor_id" value="{{ mon_idx + 1 }}">
-                <input type="hidden" name="screen_id" value="{{ scr_idx + 1 }}">
-                <input type="hidden" name="cam_id" value="{{ cam_idx }}">
-                <button class="btn btn-danger btn-sm" onclick="return confirm('Remove camera?')">Remove</button>
-              </form>
-            </td>
-          </tr>
-          {% endfor %}
-          </tbody>
-        </table>
-        <!-- Add camera to this screen -->
-        <form method="post" class="row g-2 align-items-end">
-          <input type="hidden" name="action" value="add_camera">
+      {% set rotation = mon.get('rotation', []) %}
+      {% for step_idx, step in enumerate(rotation) %}
+      <div class="step-card">
+        <form method="post">
+          <input type="hidden" name="action" value="update_step">
           <input type="hidden" name="monitor_id" value="{{ mon_idx + 1 }}">
-          <input type="hidden" name="screen_id" value="{{ scr_idx + 1 }}">
-          <div class="col-md-2"><input name="cam_name" class="form-control form-control-sm" placeholder="Camera name" required></div>
-          <div class="col-md-4"><input name="cam_url" class="form-control form-control-sm" placeholder="rtsp://..." required></div>
-          <div class="col-md-4"><input name="cam_sub" class="form-control form-control-sm" placeholder="Substream URL (optional)"></div>
-          <div class="col-md-2"><button class="btn btn-success btn-sm w-100">Add Camera</button></div>
+          <input type="hidden" name="step_idx" value="{{ step_idx }}">
+          <div class="row g-2 align-items-end mb-2">
+            <div class="col-md-3">
+              <label>Step Name</label>
+              <input name="step_name" class="form-control form-control-sm" value="{{ step.name }}">
+            </div>
+            <div class="col-md-2">
+              <label>Layout</label>
+              <select name="layout" class="form-select form-select-sm">
+                {% for n in [1,2,4,6,9,16] %}
+                <option value="{{ n }}" {{ 'selected' if step.layout == n else '' }}>{{ n }} camera{{ 's' if n>1 else '' }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label>Duration (sec)</label>
+              <input name="duration" type="number" class="form-control form-control-sm" value="{{ step.duration }}" min="0">
+            </div>
+            <div class="col-md-5">
+              <label>Cameras in this step</label>
+              <div class="d-flex flex-wrap gap-1">
+                {% for cam in cfg.get('cameras', []) %}
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="checkbox" name="cameras" value="{{ cam.id }}"
+                         id="c{{ mon_idx }}_{{ step_idx }}_{{ cam.id }}"
+                         {{ 'checked' if cam.id in step.get('cameras',[]) else '' }}>
+                  <label class="form-check-label" for="c{{ mon_idx }}_{{ step_idx }}_{{ cam.id }}" style="font-size:.8rem">
+                    {{ cam.name }}
+                  </label>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+          <!-- Camera thumbs preview -->
+          <div class="mb-2">
+            {% for cam_id in step.get('cameras', []) %}
+              {% for cam in cfg.get('cameras', []) %}{% if cam.id == cam_id %}
+              <span class="cam-slot" title="{{ cam.name }}">
+                <img src="/static/snapshots/{{ cam.id }}.jpg" class="cam-thumb"
+                     onerror="this.style.background='#30363d'">
+              </span>
+              {% endif %}{% endfor %}
+            {% endfor %}
+          </div>
+          <div class="d-flex gap-1">
+            <button class="btn btn-primary btn-sm">Save Step</button>
+            <!-- Move up -->
+            <button type="submit" form="move{{ mon_idx }}_{{ step_idx }}_up" class="btn btn-outline-secondary btn-sm">↑</button>
+            <!-- Move down -->
+            <button type="submit" form="move{{ mon_idx }}_{{ step_idx }}_down" class="btn btn-outline-secondary btn-sm">↓</button>
+            <!-- Delete -->
+            <button type="submit" form="del{{ mon_idx }}_{{ step_idx }}" class="btn btn-outline-danger btn-sm"
+                    onclick="return confirm('Remove this step?')">Delete</button>
+          </div>
+        </form>
+        <form id="move{{ mon_idx }}_{{ step_idx }}_up" method="post">
+          <input type="hidden" name="action" value="move_step">
+          <input type="hidden" name="monitor_id" value="{{ mon_idx + 1 }}">
+          <input type="hidden" name="step_idx" value="{{ step_idx }}">
+          <input type="hidden" name="direction" value="up">
+        </form>
+        <form id="move{{ mon_idx }}_{{ step_idx }}_down" method="post">
+          <input type="hidden" name="action" value="move_step">
+          <input type="hidden" name="monitor_id" value="{{ mon_idx + 1 }}">
+          <input type="hidden" name="step_idx" value="{{ step_idx }}">
+          <input type="hidden" name="direction" value="down">
+        </form>
+        <form id="del{{ mon_idx }}_{{ step_idx }}" method="post">
+          <input type="hidden" name="action" value="del_step">
+          <input type="hidden" name="monitor_id" value="{{ mon_idx + 1 }}">
+          <input type="hidden" name="step_idx" value="{{ step_idx }}">
         </form>
       </div>
       {% endfor %}
 
-      <!-- Add screen to this monitor -->
-      <hr style="border-color:#0f3460">
-      <form method="post" class="row g-2 align-items-end">
-        <input type="hidden" name="action" value="add_screen">
+      <!-- Add Step -->
+      <div class="section-title mt-3">Add Step to Rotation</div>
+      <form method="post">
+        <input type="hidden" name="action" value="add_step">
         <input type="hidden" name="monitor_id" value="{{ mon_idx + 1 }}">
-        <div class="col-md-3"><input name="screen_name" class="form-control form-control-sm" placeholder="Screen name" required></div>
-        <div class="col-md-2">
-          <select name="layout" class="form-select form-select-sm">
-            <option value="1">1 camera</option>
-            <option value="2">2 cameras</option>
-            <option value="4" selected>4 cameras</option>
-            <option value="6">6 cameras</option>
-            <option value="9">9 cameras</option>
-            <option value="16">16 cameras</option>
-          </select>
+        <div class="row g-2 align-items-end">
+          <div class="col-md-3">
+            <label>Step Name</label>
+            <input name="step_name" class="form-control form-control-sm" placeholder="e.g. Entrance Full" required>
+          </div>
+          <div class="col-md-2">
+            <label>Layout</label>
+            <select name="layout" class="form-select form-select-sm">
+              {% for n in [1,2,4,6,9,16] %}
+              <option value="{{ n }}">{{ n }} camera{{ 's' if n>1 else '' }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-2">
+            <label>Duration (sec, 0=static)</label>
+            <input name="duration" type="number" class="form-control form-control-sm" value="10" min="0">
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <button class="btn btn-success btn-sm w-100">Add Step</button>
+          </div>
         </div>
-        <div class="col-md-2"><input name="duration" type="number" class="form-control form-control-sm" placeholder="Duration sec (0=static)" value="0"></div>
-        <div class="col-md-2"><button class="btn btn-outline-warning btn-sm">Add Screen</button></div>
       </form>
     </div>
   </div>
@@ -141,18 +237,69 @@ body { background:#1a1a2e; color:#eee; }
     <div class="card-body">
       <form method="post" class="row g-2 align-items-end">
         <input type="hidden" name="action" value="add_monitor">
-        <div class="col-md-4"><input name="monitor_name" class="form-control" placeholder="Monitor name" required></div>
-        <div class="col-md-2"><button class="btn btn-primary">Add Monitor</button></div>
+        <div class="col-md-3">
+          <label>Monitor Name</label>
+          <input name="monitor_name" class="form-control form-control-sm" placeholder="Monitor 2" required>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button class="btn btn-primary btn-sm w-100">Add Monitor</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- System Settings -->
+  <div class="card">
+    <div class="card-header">System Settings</div>
+    <div class="card-body">
+      <form method="post">
+        <input type="hidden" name="action" value="system">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label>Alert Email From (Gmail address)</label>
+            <input type="email" name="email_from" class="form-control form-control-sm" value="{{ cfg.system.alert_email_from or '' }}">
+          </div>
+          <div class="col-md-6">
+            <label>Alert Email To</label>
+            <input type="email" name="email_to" class="form-control form-control-sm" value="{{ cfg.system.alert_email_to or '' }}">
+          </div>
+          <div class="col-md-4">
+            <label>Gmail App Password (16 chars)</label>
+            <input type="password" name="gmail_pass" class="form-control form-control-sm" placeholder="Leave blank to keep current">
+          </div>
+          <div class="col-md-2">
+            <label>Watchdog Interval (sec)</label>
+            <input type="number" name="watchdog_interval" class="form-control form-control-sm" value="{{ cfg.system.watchdog_interval or 30 }}">
+          </div>
+          <div class="col-md-3">
+            <label>New Admin Password</label>
+            <input type="password" name="new_password" class="form-control form-control-sm" placeholder="Leave blank to keep current">
+          </div>
+        </div>
+        <div class="mt-3 d-flex gap-2">
+          <button type="submit" class="btn btn-primary btn-sm">Save Settings</button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" onclick="testEmail()">Test Email</button>
+        </div>
       </form>
     </div>
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+function refreshSnap(camId) {
+  const img = document.getElementById('snap-' + camId);
+  img.style.opacity = '0.4';
+  fetch('/api/snapshot/' + camId, {method:'POST'})
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) { img.src = d.url; img.style.opacity = '1'; }
+      else { alert('Snapshot failed: ' + d.msg); img.style.opacity = '1'; }
+    });
+}
 function testEmail() {
-  fetch('/api/test-email', {method:'POST'}).then(r=>r.json()).then(d=>{
-    alert(d.ok ? '✓ ' + d.msg : '✗ ' + d.msg);
-  });
+  fetch('/api/test-email', {method:'POST'}).then(r=>r.json())
+    .then(d => alert(d.ok ? '✓ ' + d.msg : '✗ ' + d.msg));
 }
 </script>
 </body>

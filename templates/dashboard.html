@@ -1,127 +1,142 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>VideoWall Dashboard</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
 <style>
-body { background:#1a1a2e; color:#eee; }
-.navbar { background:#0f3460 !important; }
-.card { background:#16213e; border:1px solid #0f3460; color:#eee; }
-.card-header { background:#0f3460; font-weight:bold; }
-.badge-live { background:#28a745; }
-.stat-num { font-size:2rem; font-weight:bold; color:#e94560; }
-.btn-danger2 { background:#e94560; border-color:#e94560; color:#fff; }
-.btn-danger2:hover { background:#c73652; }
-pre { background:#0d0d1a; color:#0f9; padding:10px; border-radius:4px; font-size:0.75rem; max-height:300px; overflow-y:auto; }
+body{background:#0d1117;color:#e6edf3;font-family:system-ui,sans-serif}
+.navbar{background:#161b22!important;border-bottom:1px solid #30363d}
+.card{background:#161b22;border:1px solid #30363d;color:#e6edf3}
+.card-header{background:#1c2128;border-bottom:1px solid #30363d;font-weight:600}
+.stat-box{text-align:center;padding:1.2rem}
+.stat-num{font-size:2rem;font-weight:700;color:#58a6ff}
+.stat-label{color:#8b949e;font-size:.8rem;text-transform:uppercase;letter-spacing:.05em}
+.badge-connected{background:#238636}
+.rotation-step{background:#1c2128;border:1px solid #30363d;border-radius:6px;padding:.75rem;margin-bottom:.5rem}
+.rotation-step.active{border-color:#58a6ff;background:#1d3040}
+.step-layout{background:#0d1117;border-radius:4px;padding:.2rem .5rem;font-size:.75rem;color:#8b949e}
+.progress{background:#0d1117;height:6px}
+.progress-bar{background:#58a6ff}
+pre{background:#0d1117;color:#3fb950;padding:10px;border-radius:6px;font-size:.72rem;max-height:280px;overflow-y:auto;border:1px solid #30363d}
+.btn-action{background:#238636;border-color:#238636;color:#fff}
+.btn-action:hover{background:#2ea043}
+.btn-warn{background:#b08800;border-color:#b08800;color:#fff}
+.btn-warn:hover{background:#d4a017}
 </style>
 </head>
 <body>
-<nav class="navbar navbar-dark mb-4">
-  <div class="container-fluid">
-    <span class="navbar-brand">VideoWall Admin</span>
-    <div>
-      <a href="/config" class="btn btn-outline-light btn-sm me-2">Config</a>
-      <a href="/logout" class="btn btn-outline-danger btn-sm">Logout</a>
-    </div>
+<nav class="navbar navbar-dark mb-4 px-3">
+  <span class="navbar-brand fw-bold">VideoWall</span>
+  <div class="d-flex gap-2">
+    <a href="/config" class="btn btn-outline-secondary btn-sm">Config</a>
+    <a href="/logout" class="btn btn-outline-danger btn-sm">Logout</a>
   </div>
 </nav>
 <div class="container-fluid px-4">
+
+  <!-- Stats row -->
   <div class="row g-3 mb-4">
-    <div class="col-md-3">
-      <div class="card text-center p-3">
-        <div class="text-muted small">CPU</div>
+    <div class="col-6 col-md-3">
+      <div class="card stat-box">
+        <div class="stat-label">CPU</div>
         <div class="stat-num">{{ sys.cpu }}%</div>
       </div>
     </div>
-    <div class="col-md-3">
-      <div class="card text-center p-3">
-        <div class="text-muted small">RAM</div>
+    <div class="col-6 col-md-3">
+      <div class="card stat-box">
+        <div class="stat-label">RAM</div>
         <div class="stat-num">{{ sys.ram_pct }}%</div>
-        <div class="text-muted small">{{ sys.ram_used }} / {{ sys.ram_total }}</div>
+        <div class="text-muted" style="font-size:.8rem">{{ sys.ram_used }} / {{ sys.ram_total }}</div>
       </div>
     </div>
-    <div class="col-md-3">
-      <div class="card text-center p-3">
-        <div class="text-muted small">Disk</div>
+    <div class="col-6 col-md-3">
+      <div class="card stat-box">
+        <div class="stat-label">Disk</div>
         <div class="stat-num">{{ sys.disk_pct }}%</div>
       </div>
     </div>
-    <div class="col-md-3">
-      <div class="card text-center p-3">
-        <div class="text-muted small">Hostname</div>
-        <div class="fw-bold mt-1">{{ sys.hostname }}</div>
+    <div class="col-6 col-md-3">
+      <div class="card stat-box">
+        <div class="stat-label">Host</div>
+        <div class="fw-bold mt-1" style="font-size:1rem">{{ sys.hostname }}</div>
         {% for ip in sys.ips %}
-        <div class="text-muted small">{{ ip }}</div>
+        <div class="text-muted" style="font-size:.78rem">{{ ip }}</div>
         {% endfor %}
       </div>
     </div>
   </div>
 
   <div class="row g-3 mb-4">
-    <div class="col-md-6">
-      <div class="card">
+    <!-- Displays -->
+    <div class="col-md-4">
+      <div class="card h-100">
         <div class="card-header">Connected Displays</div>
         <div class="card-body">
           {% if sys.displays %}
             {% for d in sys.displays %}
-            <div class="mb-1"><span class="badge badge-live me-2">LIVE</span>{{ d }}</div>
+            <div class="mb-2"><span class="badge badge-connected me-2">CONNECTED</span><small>{{ d }}</small></div>
             {% endfor %}
           {% else %}
-            <span class="text-muted">No displays detected</span>
+            <span class="text-muted small">No displays detected</span>
           {% endif %}
         </div>
       </div>
     </div>
-    <div class="col-md-6">
-      <div class="card">
-        <div class="card-header">Cameras</div>
+
+    <!-- Rotation Status -->
+    <div class="col-md-8">
+      <div class="card h-100">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          Rotation Status
+          <button class="btn btn-sm btn-outline-secondary" onclick="location.reload()">Refresh</button>
+        </div>
         <div class="card-body">
           {% for mon in cfg.monitors %}
-          <div class="fw-bold mb-1">{{ mon.name }}</div>
-          {% for scr in mon.screens %}
-            {% for cam in scr.cameras %}
-            <div class="ms-3 mb-1 text-muted small">{{ cam.name }} &mdash; {{ cam.url }}</div>
-            {% endfor %}
-          {% endfor %}
+            {% set mon_state = sys.rotation_state.get(mon.id|string, {}) %}
+            <div class="mb-3">
+              <div class="fw-bold mb-2">{{ mon.name }}</div>
+              {% set rotation = mon.get('rotation', []) %}
+              {% for step in rotation %}
+                {% set is_active = mon_state.get('step_idx', -1) == loop.index0 %}
+                <div class="rotation-step {{ 'active' if is_active else '' }}">
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                      {% if is_active %}<span class="badge bg-primary me-2">NOW</span>{% endif %}
+                      {{ step.name }}
+                      <span class="step-layout ms-2">{{ step.layout }}-cam grid</span>
+                      <span class="step-layout ms-1">{{ step.duration }}s</span>
+                    </div>
+                    <small class="text-muted">{{ step.cameras | length }} camera(s)</small>
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
           {% endfor %}
         </div>
       </div>
     </div>
   </div>
 
+  <!-- Controls -->
   <div class="row g-3 mb-4">
     <div class="col-12">
       <div class="card">
         <div class="card-header">Controls</div>
-        <div class="card-body d-flex gap-2">
-          <button class="btn btn-primary" onclick="restartDisplay()">Restart Display</button>
-          <button class="btn btn-warning" onclick="if(confirm('Reboot?')) rebootSystem()">Reboot PC</button>
+        <div class="card-body d-flex flex-wrap gap-2">
+          <button class="btn btn-action" onclick="apiCall('/api/restart','Restarting display service...')">Restart Display</button>
+          <button class="btn btn-warn" onclick="if(confirm('Reboot the PC now?')) apiCall('/api/reboot','Rebooting...')">Reboot PC</button>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="row g-3">
-    <div class="col-12">
-      <div class="card">
-        <div class="card-header">Display Service Logs</div>
-        <div class="card-body">
-          <pre id="logs">{{ sys.logs }}</pre>
-        </div>
-      </div>
-    </div>
-  </div>
 </div>
 <script>
-function restartDisplay() {
-  fetch('/api/restart', {method:'POST'}).then(r=>r.json()).then(d=>{ alert('Display service restarted'); location.reload(); });
+function apiCall(url, msg) {
+  fetch(url, {method:'POST'}).then(r=>r.json()).then(()=>{ alert(msg); setTimeout(()=>location.reload(),3000); });
 }
-function rebootSystem() {
-  fetch('/api/reboot', {method:'POST'}).then(r=>r.json()).then(d=>{ alert('Rebooting...'); });
-}
-setTimeout(()=>location.reload(), 30000);
+setTimeout(()=>location.reload(), 15000);
 </script>
 </body>
 </html>

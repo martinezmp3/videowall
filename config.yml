@@ -4,29 +4,54 @@ system:
   alert_email_to: ""
   gmail_app_password: ""
   watchdog_interval: 30
-  stream_dead_threshold: 15
+
+cameras:
+  - id: cam_driveway
+    name: "Driveway"
+    url: "rtsp://192.168.86.233:7447/d9eh8leuMKC5718t"
+    substream: "rtsp://192.168.86.233:7447/PbwGrj1UkxmoQk0F"
+    use_substream: false
+  - id: cam_frontdoor
+    name: "Front Door"
+    url: "rtsp://192.168.86.233:7447/LqWilAyQefPYMtZw"
+    substream: "rtsp://192.168.86.233:7447/8rFAf4Y7OUsjEHc0"
+    use_substream: false
+  - id: cam_backyard
+    name: "Back Yard"
+    url: "rtsp://192.168.86.233:7447/eH1LEipmsDmwRX5P"
+    substream: "rtsp://192.168.86.233:7447/XJPkRfWN4t6XPeQI"
+    use_substream: false
+  - id: cam_trash
+    name: "Trash"
+    url: "rtsp://192.168.86.233:7447/HInhAyRnFaGR0tc5"
+    substream: "rtsp://192.168.86.233:7447/AkM4O6ZWS0vx23jq"
+    use_substream: false
 
 monitors:
   - id: 1
     name: "Monitor 1"
-    screens:
-      - name: "Main View"
+    rotation:
+      - name: "Driveway"
+        layout: 1
+        duration: 5
+        cameras: [cam_driveway]
+      - name: "Front Door"
+        layout: 1
+        duration: 5
+        cameras: [cam_frontdoor]
+      - name: "Quad View"
         layout: 4
-        duration: 0
-        cameras:
-          - name: "Camera 1"
-            url: "rtsp://192.168.1.100/stream1"
-            use_substream: false
-            substream: ""
-          - name: "Camera 2"
-            url: "rtsp://192.168.1.101/stream1"
-            use_substream: false
-            substream: ""
-          - name: "Camera 3"
-            url: "rtsp://192.168.1.102/stream1"
-            use_substream: false
-            substream: ""
-          - name: "Camera 4"
-            url: "rtsp://192.168.1.103/stream1"
-            use_substream: false
-            substream: ""
+        duration: 10
+        cameras: [cam_driveway, cam_frontdoor, cam_backyard, cam_trash]
+      - name: "Back Yard"
+        layout: 1
+        duration: 5
+        cameras: [cam_backyard]
+      - name: "Trash"
+        layout: 1
+        duration: 5
+        cameras: [cam_trash]
+      - name: "Quad View Long"
+        layout: 4
+        duration: 30
+        cameras: [cam_driveway, cam_frontdoor, cam_backyard, cam_trash]
