@@ -84,8 +84,38 @@ def get_monitor_geometries():
 
 def grid_positions(monitor, layout, num_cameras):
     w,h,ox,oy = monitor['w'],monitor['h'],monitor['x'],monitor['y']
+
+    # ── Custom layouts ────────────────────────────────────────
+    if layout == '3L4S':
+        # 3 large (quarter each) + bottom-right quarter split into 4 small
+        positions = [
+            {'w':w//2,  'h':h//2,  'x':ox,        'y':oy},          # Large TL
+            {'w':w//2,  'h':h//2,  'x':ox+w//2,   'y':oy},          # Large TR
+            {'w':w//2,  'h':h//2,  'x':ox,        'y':oy+h//2},     # Large BL
+            {'w':w//4,  'h':h//4,  'x':ox+w//2,   'y':oy+h//2},     # Small 1
+            {'w':w//4,  'h':h//4,  'x':ox+3*w//4, 'y':oy+h//2},     # Small 2
+            {'w':w//4,  'h':h//4,  'x':ox+w//2,   'y':oy+3*h//4},   # Small 3
+            {'w':w//4,  'h':h//4,  'x':ox+3*w//4, 'y':oy+3*h//4},   # Small 4
+        ]
+        return positions[:num_cameras]
+
+    elif layout == 'feat8':
+        # 1 large main (top-right 3/4) + 3 left sidebar + 4 bottom strip
+        positions = [
+            {'w':3*w//4,'h':3*h//4,'x':ox+w//4,   'y':oy},          # Main (large)
+            {'w':w//4,  'h':h//4,  'x':ox,        'y':oy},          # Left top
+            {'w':w//4,  'h':h//4,  'x':ox,        'y':oy+h//4},     # Left mid
+            {'w':w//4,  'h':h//4,  'x':ox,        'y':oy+h//2},     # Left bot
+            {'w':w//4,  'h':h//4,  'x':ox,        'y':oy+3*h//4},   # Bottom 1
+            {'w':w//4,  'h':h//4,  'x':ox+w//4,   'y':oy+3*h//4},   # Bottom 2
+            {'w':w//4,  'h':h//4,  'x':ox+w//2,   'y':oy+3*h//4},   # Bottom 3
+            {'w':w//4,  'h':h//4,  'x':ox+3*w//4, 'y':oy+3*h//4},   # Bottom 4
+        ]
+        return positions[:num_cameras]
+
+    # ── Standard equal grids ──────────────────────────────────
     grid = {1:(1,1),2:(2,1),4:(2,2),6:(3,2),9:(3,3),16:(4,4)}
-    cols,rows = grid.get(layout,(2,2))
+    cols,rows = grid.get(int(layout) if str(layout).lstrip('-').isdigit() else 4,(2,2))
     cw,ch = w//cols, h//rows
     return [
         {'w':cw,'h':ch,'x':ox+(i%cols)*cw,'y':oy+(i//cols)*ch}

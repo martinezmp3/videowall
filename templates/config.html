@@ -160,21 +160,34 @@ footer a:hover{color:#8b949e}
               <input type="hidden" name="step_idx" value="{{ step_idx }}">
               <div class="row g-2 align-items-end mb-2">
                 <div class="col-md-3"><label>Step Name</label><input name="step_name" class="form-control form-control-sm" value="{{ step.name }}"></div>
-                <div class="col-md-2"><label>Layout</label>
+                <div class="col-md-3"><label>Layout</label>
                   <select name="layout" class="form-select form-select-sm">
-                    {% for n in [1,2,4,6,9,16] %}<option value="{{ n }}" {{ 'selected' if step.layout==n }}>{{ n }} cam{{ 's' if n>1 }}</option>{% endfor %}
+                    {% for n,lbl in [(1,'1 cam – Fullscreen'),(2,'2 cams – Left/Right'),(4,'4 cams – 2×2 Grid'),(6,'6 cams – 3×2 Grid'),(9,'9 cams – 3×3 Grid'),(16,'16 cams – 4×4 Grid')] %}
+                    <option value="{{ n }}" {{ 'selected' if step.layout==n }}>{{ lbl }}</option>
+                    {% endfor %}
+                    <option value="3L4S" {{ 'selected' if step.layout=='3L4S' }}>3 Large + 4 Small (7 cams)</option>
+                    <option value="feat8" {{ 'selected' if step.layout=='feat8' }}>Featured 8 – Main + Sidebar</option>
                   </select>
                 </div>
                 <div class="col-md-2"><label>Duration (sec, 0=static)</label><input name="duration" type="number" class="form-control form-control-sm" value="{{ step.duration }}" min="0"></div>
                 <div class="col-12">
                   <label>Camera Positions</label>
-                  {% set gcols = {1:1,2:2,4:2,6:3,9:3,16:4} %}
-                  {% set plbls = {1:['Full Screen'],2:['Left','Right'],4:['Top-Left','Top-Right','Bot-Left','Bot-Right'],6:['R1-Left','R1-Center','R1-Right','R2-Left','R2-Center','R2-Right']} %}
-                  {% set cols = gcols.get(step.layout,2) %}
+                  {% set LSIZES = {1:1,2:2,4:4,6:6,9:9,16:16,'3L4S':7,'feat8':8} %}
+                  {% set GCOLS  = {1:1,2:2,4:2,6:3,9:3,16:4,'3L4S':2,'feat8':2} %}
+                  {% set PLBLS  = {
+                    1:['Full Screen'],
+                    2:['Left','Right'],
+                    4:['Top-Left','Top-Right','Bot-Left','Bot-Right'],
+                    6:['R1-Left','R1-Center','R1-Right','R2-Left','R2-Center','R2-Right'],
+                    '3L4S':['Large: Top-Left','Large: Top-Right','Large: Bot-Left','Small 1 (BR top-L)','Small 2 (BR top-R)','Small 3 (BR bot-L)','Small 4 (BR bot-R)'],
+                    'feat8':['Main Screen (Large)','Left Top','Left Middle','Left Bottom','Bottom 1','Bottom 2','Bottom 3','Bottom 4']
+                  } %}
+                  {% set num_slots = LSIZES.get(step.layout, step.layout if step.layout is number else 4) %}
+                  {% set cols = GCOLS.get(step.layout, 2) %}
                   <div class="cam-pos-grid" style="grid-template-columns:repeat({{ cols }},1fr)">
-                    {% for pos in range(step.layout) %}
+                    {% for pos in range(num_slots) %}
                     {% set assigned = step.get('cameras',[])[pos] if pos < (step.get('cameras',[])|length) else '' %}
-                    {% set lbls = plbls.get(step.layout,[]) %}
+                    {% set lbls = PLBLS.get(step.layout,[]) %}
                     {% set lbl = lbls[pos] if pos < (lbls|length) else 'Position ' + (pos+1)|string %}
                     <div class="cam-pos-cell">
                       <div class="pos-label">{{ lbl }}</div>
@@ -214,7 +227,13 @@ footer a:hover{color:#8b949e}
             <input type="hidden" name="pl_id" value="{{ pl.id }}">
             <div class="row g-2 align-items-end">
               <div class="col-md-3"><label>Step Name</label><input name="step_name" class="form-control form-control-sm" placeholder="e.g. Front Door Full" required></div>
-              <div class="col-md-2"><label>Layout</label><select name="layout" class="form-select form-select-sm">{% for n in [1,2,4,6,9,16] %}<option value="{{ n }}">{{ n }} cam{{ 's' if n>1 }}</option>{% endfor %}</select></div>
+              <div class="col-md-3"><label>Layout</label>
+              <select name="layout" class="form-select form-select-sm">
+                {% for n,lbl in [(1,'1 cam – Fullscreen'),(2,'2 cams – Left/Right'),(4,'4 cams – 2×2 Grid'),(6,'6 cams – 3×2 Grid'),(9,'9 cams – 3×3 Grid'),(16,'16 cams – 4×4 Grid')] %}
+                <option value="{{ n }}">{{ lbl }}</option>{% endfor %}
+                <option value="3L4S">3 Large + 4 Small (7 cams)</option>
+                <option value="feat8">Featured 8 – Main + Sidebar</option>
+              </select></div>
               <div class="col-md-2"><label>Duration (sec)</label><input name="duration" type="number" class="form-control form-control-sm" value="10" min="0"></div>
               <div class="col-md-2 d-flex align-items-end"><button class="btn btn-success btn-sm w-100">Add Step</button></div>
             </div>
