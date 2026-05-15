@@ -315,6 +315,32 @@ def write_state_loop():
                 json.dump(state, f)
         except Exception: pass
 
+def show_setup_screen():
+    """Display the factory-reset setup screen using feh, fullscreen."""
+    screen_path = "/opt/videowall/static/setup_screen.png"
+    log.info("Setup mode: showing instruction screen")
+    env = {**os.environ, "DISPLAY": ":0"}
+    # Solid black background first
+    subprocess.run(["xsetroot", "-solid", "black"], env=env)
+    # Kill any stray mpv
+    subprocess.run(["pkill", "-x", "mpv"], capture_output=True)
+    # Show setup screen fullscreen, looping
+    proc = subprocess.Popen(
+        ["feh", "--fullscreen", "--auto-zoom", "--borderless", screen_path],
+        env=env
+    )
+    # Wait until setup_mode is cleared (config rewritten on first login after setup)
+    while True:
+        time.sleep(10)
+        try:
+            cfg = load_config()
+            if not cfg.get("setup_mode"):
+                log.info("Setup mode cleared, restarting display...")
+                proc.terminate()
+                return
+        except Exception:
+            pass
+
 def main():
     log.info("VideoWall Supervisor starting...")
     for _ in range(30):
@@ -325,6 +351,12 @@ def main():
         log.error("X server not ready"); sys.exit(1)
 
     config         = load_config()
+    # ── Setup / factory-reset mode ──────────────────────────────────────────
+    if config.get("setup_mode"):
+        show_setup_screen()
+        # After setup_mode cleared, restart the whole supervisor cleanly
+        os.execv(sys.executable, [sys.executable] + sys.argv)
+        return
     cam_index      = build_cam_index(config)
     playlist_index = build_playlist_index(config)
     geometries     = get_monitor_geometries()

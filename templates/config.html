@@ -346,6 +346,55 @@ footer a:hover{color:#8b949e}
           </form>
         </div>
       </div>
+
+      <!-- Backup & Restore -->
+      <div class="card mb-3">
+        <div class="card-header">Backup &amp; Restore</div>
+        <div class="card-body">
+          <div class="row g-3 align-items-end">
+            <div class="col-auto">
+              <p class="text-muted small mb-2">Download the full configuration as a YAML file.</p>
+              <a href="/api/backup" class="btn btn-outline-primary btn-sm">Download Backup</a>
+            </div>
+            <div class="col-md-6">
+              <p class="text-muted small mb-2">Restore a previously downloaded backup. <strong>This overwrites all current settings.</strong></p>
+              <form method="post" action="/api/restore" enctype="multipart/form-data" class="d-flex gap-2 align-items-center">
+                <input type="file" name="backup_file" accept=".yml,.yaml" class="form-control form-control-sm" required style="max-width:280px">
+                <button type="submit" class="btn btn-warning btn-sm"
+                        onclick="return confirm('Restore this backup? All current settings will be replaced.')">
+                  Restore
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Factory Reset -->
+      <div class="card mb-3" style="border-color:#da3633">
+        <div class="card-header" style="color:#f85149;border-bottom-color:#da3633">Factory Reset</div>
+        <div class="card-body">
+          <p class="text-muted small mb-3">
+            Erases <strong>all cameras, playlists, and schedules</strong>. Resets admin password to
+            <code>videowall</code>. Starts WiFi Access Point <code>VideoWall-Setup</code>
+            (password: <code>jjsmart123</code>). The screen will show setup instructions.
+          </p>
+          <button class="btn btn-danger btn-sm" onclick="showResetConfirm()">Factory Reset…</button>
+          <form id="reset-form" method="post" action="/api/factory-reset" style="display:none" class="mt-3">
+            <div class="alert alert-danger py-2">
+              <strong>This cannot be undone.</strong> Type <code>RESET</code> to confirm:
+            </div>
+            <div class="d-flex gap-2 align-items-center mt-2">
+              <input type="text" name="confirm" id="reset-confirm-input"
+                     class="form-control form-control-sm" style="max-width:160px"
+                     placeholder="Type RESET" autocomplete="off">
+              <button type="submit" class="btn btn-danger btn-sm">Confirm Reset</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="hideResetConfirm()">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-header">About</div>
         <div class="card-body" style="font-size:.85rem;color:#8b949e">
@@ -851,6 +900,15 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const netTab = document.querySelector('a[href="#network"]');
   if (netTab) netTab.addEventListener('shown.bs.tab', loadNetStatus);
 });
+
+function showResetConfirm() {
+  document.getElementById('reset-form').style.display = 'block';
+  document.getElementById('reset-confirm-input').focus();
+}
+function hideResetConfirm() {
+  document.getElementById('reset-form').style.display = 'none';
+  document.getElementById('reset-confirm-input').value = '';
+}
 
 function testEmail(){
   fetch('/api/test-email',{method:'POST'}).then(r=>r.json())

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-import os, re, subprocess, socket, yaml, psutil, hashlib, secrets, json, smtplib, threading
+import os, re, io, subprocess, socket, yaml, psutil, hashlib, secrets, json, smtplib, threading
 from pathlib import Path
 from datetime import datetime
 from email.mime.text import MIMEText
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, send_file
 from functools import wraps
 
 CONFIG_PATH = "/opt/videowall/config.yml"
@@ -371,6 +371,90 @@ def schedule_update():
     except IndexError:
         flash('Invalid rule')
     return redirect(url_for('config_page')+'#schedule')
+
+# ─── Backup / Restore / Factory Reset ────────────────────────────────────────
+DEFAULT_CONFIG = {
+    'system': {
+        'admin_password_hash': '',  # filled at runtime
+        'alert_email_from': '',
+        'alert_email_to': '',
+        'gmail_app_password': '',
+        'watchdog_interval': 30,
+    },
+    'cameras': [],
+    'playlists': [],
+    'monitors': [
+        {'id': 1, 'name': 'Monitor 1', 'x': 0, 'y': 0, 'w': 1920, 'h': 1080, 'schedule': []}
+    ],
+    'setup_mode': True,
+}
+
+@app.route('/api/backup')
+@login_required
+def backup_download():
+    import datetime as _dt
+    ts   = _dt.datetime.now().strftime('%Y%m%d_%H%M%S')
+    data = open(CONFIG_PATH, 'rb').read()
+    buf  = io.BytesIO(data)
+    buf.seek(0)
+    return send_file(buf, as_attachment=True,
+                     download_name=f'videowall_backup_{ts}.yml',
+                     mimetype='application/x-yaml')
+
+@app.route('/api/restore', methods=['POST'])
+@login_required
+def backup_restore():
+    f = request.files.get('backup_file')
+    if not f:
+        flash('No file selected.', 'danger')
+        return redirect(url_for('config_page') + '#system')
+    try:
+        data = yaml.safe_load(f.read())
+        if not isinstance(data, dict) or 'system' not in data:
+            flash('Invalid backup file — missing system section.', 'danger')
+            return redirect(url_for('config_page') + '#system')
+        # Remove setup_mode if present in backup
+        data.pop('setup_mode', None)
+        save_config(data)
+        subprocess.Popen(['bash', '-c', 'sleep 1 && systemctl restart videowall-display'])
+        flash('Configuration restored successfully. Display restarting...', 'success')
+    except Exception as e:
+        flash(f'Restore failed: {e}', 'danger')
+    return redirect(url_for('config_page') + '#system')
+
+@app.route('/api/factory-reset', methods=['POST'])
+@login_required
+def factory_reset():
+    confirm = request.form.get('confirm', '')
+    if confirm != 'RESET':
+        flash('Factory reset cancelled — confirmation text did not match.', 'danger')
+        return redirect(url_for('config_page') + '#system')
+
+    # Build fresh config
+    cfg = dict(DEFAULT_CONFIG)
+    cfg['system'] = dict(DEFAULT_CONFIG['system'])
+    cfg['system']['admin_password_hash'] = hash_pw('videowall')
+
+    # Regenerate setup screen (in case AP SSID changed, etc.)
+    subprocess.run(['python3', '/opt/videowall/setup_screen_gen.py'], check=False)
+
+    save_config(cfg)
+
+    # Start WiFi AP in background
+    ap_cmd = (
+        'nmcli con delete VideoWall-Hotspot 2>/dev/null; '
+        'nmcli dev wifi hotspot '
+        f'ifname {WIFI_IFACE} con-name VideoWall-Hotspot '
+        'ssid VideoWall-Setup password jjsmart123 band bg'
+    )
+    subprocess.Popen(['bash', '-c', ap_cmd])
+
+    # Restart display service so supervisor picks up setup_mode
+    subprocess.Popen(['bash', '-c', 'sleep 1 && systemctl restart videowall-display'])
+
+    session.clear()
+    return redirect(url_for('login') + '?reset=1')
+
 
 # ─── Network management ──────────────────────────────────────────────────────
 ETH_IFACE  = 'enp0s31f6'

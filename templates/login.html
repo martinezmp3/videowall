@@ -30,6 +30,14 @@ label{color:#8b949e;font-size:.83rem;margin-bottom:.3rem;display:block}
     <div class="logo-sub">Security Camera Management</div>
   </div>
   <div class="login-body">
+    {% if request.args.get('reset') %}
+    <div class="alert alert-warning mb-3">
+      <strong>Factory reset complete.</strong><br>
+      Connect to WiFi <strong>VideoWall-Setup</strong> (pw: jjsmart123),
+      then browse to <strong>http://10.42.0.1</strong>.<br>
+      Default login password: <strong>videowall</strong>
+    </div>
+    {% endif %}
     {% with messages = get_flashed_messages() %}
       {% if messages %}<div class="alert alert-danger mb-3">{{ messages[0] }}</div>{% endif %}
     {% endwith %}
