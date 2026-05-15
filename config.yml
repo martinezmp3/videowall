@@ -88,10 +88,16 @@ playlists:
     cameras:
     - cam_frontdoor
   - name: Back Yard
-    layout: 1
+    layout: 3L4S
     duration: 5
     cameras:
+    - cam_driveway
     - cam_backyard
+    - rickycam
+    - jorgitocam
+    - drivewaytop
+    - doorbellcam
+    - garage
   - name: Quad View Long
     layout: 4
     duration: 30
@@ -114,18 +120,17 @@ playlists:
   name: Night Mode
   rotation:
   - name: All Cameras
-    layout: 9
+    layout: feat8
     duration: 0
     cameras:
     - cam_driveway
     - cam_frontdoor
-    - cam_backyard
-    - cam_trash
-    - doorbellcam
-    - drivewaytop
     - frontyard
-    - rickycam
     - jorgitocam
+    - cam_trash
+    - drivewaytop
+    - doorbellcam
+    - rickycam
 monitors:
 - id: 1
   name: Monitor 1

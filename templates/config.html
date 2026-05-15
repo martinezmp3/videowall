@@ -71,6 +71,7 @@ footer a:hover{color:#8b949e}
     <li class="nav-item"><a class="nav-link"        href="#playlists" data-bs-toggle="tab">Playlists</a></li>
     <li class="nav-item"><a class="nav-link"        href="#schedule"  data-bs-toggle="tab">Schedule</a></li>
     <li class="nav-item"><a class="nav-link"        href="#system"    data-bs-toggle="tab">System</a></li>
+    <li class="nav-item"><a class="nav-link"        href="#network"   data-bs-toggle="tab">Network</a></li>
   </ul>
 
   <div class="tab-content">
@@ -161,7 +162,7 @@ footer a:hover{color:#8b949e}
               <div class="row g-2 align-items-end mb-2">
                 <div class="col-md-3"><label>Step Name</label><input name="step_name" class="form-control form-control-sm" value="{{ step.name }}"></div>
                 <div class="col-md-3"><label>Layout</label>
-                  <select name="layout" class="form-select form-select-sm">
+                  <select name="layout" class="form-select form-select-sm" onchange="changeLayout(this)">
                     {% for n,lbl in [(1,'1 cam – Fullscreen'),(2,'2 cams – Left/Right'),(4,'4 cams – 2×2 Grid'),(6,'6 cams – 3×2 Grid'),(9,'9 cams – 3×3 Grid'),(16,'16 cams – 4×4 Grid')] %}
                     <option value="{{ n }}" {{ 'selected' if step.layout==n }}>{{ lbl }}</option>
                     {% endfor %}
@@ -354,6 +355,104 @@ footer a:hover{color:#8b949e}
         </div>
       </div>
     </div>
+
+    <!-- ══ NETWORK TAB ══════════════════════════════════════════════════════ -->
+    <div class="tab-pane fade" id="network">
+
+      <!-- Ethernet -->
+      <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          Ethernet <span id="eth-ip-badge" class="badge bg-secondary small">loading...</span>
+        </div>
+        <div class="card-body">
+          <div class="row g-2 align-items-end">
+            <div class="col-md-3">
+              <label>Mode</label>
+              <select id="eth-mode" class="form-select form-select-sm" onchange="ethModeToggle()">
+                <option value="dhcp">DHCP (automatic)</option>
+                <option value="static">Static IP</option>
+              </select>
+            </div>
+            <div id="eth-static-fields" class="col-12 row g-2 mt-1" style="display:none!important">
+              <div class="col-md-3"><label>IP Address</label><input id="eth-ip" class="form-control form-control-sm" placeholder="192.168.1.100"></div>
+              <div class="col-md-2"><label>Prefix (CIDR)</label><input id="eth-mask" class="form-control form-control-sm" value="24" placeholder="24"></div>
+              <div class="col-md-3"><label>Gateway</label><input id="eth-gw" class="form-control form-control-sm" placeholder="192.168.1.1"></div>
+              <div class="col-md-3"><label>DNS</label><input id="eth-dns" class="form-control form-control-sm" placeholder="8.8.8.8"></div>
+            </div>
+          </div>
+          <div class="mt-3">
+            <button class="btn btn-primary btn-sm" onclick="saveEth()">Apply Ethernet Settings</button>
+            <small class="text-muted ms-2">If you're connected via Ethernet, you may lose connection briefly.</small>
+          </div>
+          <div id="eth-msg" class="mt-2"></div>
+        </div>
+      </div>
+
+      <!-- WiFi -->
+      <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          WiFi
+          <span id="wifi-status-badge" class="badge bg-secondary small">loading...</span>
+        </div>
+        <div class="card-body">
+          <div class="d-flex gap-2 mb-3">
+            <button class="btn btn-outline-primary btn-sm" onclick="wifiScan()">
+              <span id="scan-spinner" class="spinner-border spinner-border-sm me-1 d-none"></span>
+              Scan for Networks
+            </button>
+            <button class="btn btn-outline-danger btn-sm" onclick="wifiDisconnect()">Disconnect</button>
+          </div>
+          <div id="wifi-net-list" class="mb-3"></div>
+          <!-- Connect form (shown when a network is selected) -->
+          <div id="wifi-connect-form" style="display:none">
+            <div class="card" style="background:#161b22;border-color:#30363d">
+              <div class="card-body p-3">
+                <div class="row g-2 align-items-end">
+                  <div class="col-md-4"><label>Network</label><input id="wifi-ssid-sel" class="form-control form-control-sm" readonly></div>
+                  <div class="col-md-4"><label>Password</label><input id="wifi-pw" type="password" class="form-control form-control-sm" placeholder="Leave blank if open"></div>
+                  <div class="col-auto">
+                    <button class="btn btn-success btn-sm" onclick="wifiConnect()">
+                      <span id="conn-spinner" class="spinner-border spinner-border-sm me-1 d-none"></span>
+                      Connect
+                    </button>
+                    <button class="btn btn-secondary btn-sm ms-1" onclick="document.getElementById('wifi-connect-form').style.display='none'">Cancel</button>
+                  </div>
+                </div>
+                <div id="wifi-conn-msg" class="mt-2"></div>
+              </div>
+            </div>
+          </div>
+          <div id="wifi-msg" class="mt-2"></div>
+        </div>
+      </div>
+
+      <!-- AP / Hotspot Mode -->
+      <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          Access Point (Hotspot) Mode
+          <span id="ap-badge" class="badge bg-secondary small">loading...</span>
+        </div>
+        <div class="card-body">
+          <p class="text-muted small mb-3">Enable this to broadcast a WiFi network directly from this device. Connect with your phone to <strong>10.42.0.1</strong> to access the admin panel without a router.</p>
+          <div class="row g-2 align-items-end mb-3">
+            <div class="col-md-4"><label>AP Network Name (SSID)</label><input id="ap-ssid" class="form-control form-control-sm" value="VideoWall-Setup"></div>
+            <div class="col-md-4"><label>Password (min 8 chars)</label><input id="ap-pw" type="password" class="form-control form-control-sm" value="jjsmart123"></div>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-success btn-sm" onclick="apStart()">
+              <span id="ap-start-spinner" class="spinner-border spinner-border-sm me-1 d-none"></span>
+              Start Hotspot
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="apStop()">
+              <span id="ap-stop-spinner" class="spinner-border spinner-border-sm me-1 d-none"></span>
+              Stop Hotspot
+            </button>
+          </div>
+          <div id="ap-msg" class="mt-2"></div>
+        </div>
+      </div>
+
+    </div><!-- /#network -->
 
   </div><!-- /tab-content -->
 </div><!-- /container -->
@@ -551,6 +650,207 @@ function updateSlotPreview(sel) {
     img.classList.add('hidden');
   }
 }
+
+// Mirror of Jinja2 layout constants for dynamic grid rebuild
+const LAYOUT_SIZES = {1:1,2:2,4:4,6:6,9:9,16:16,'3L4S':7,'feat8':8};
+const LAYOUT_COLS  = {1:1,2:2,4:2,6:3,9:3,16:4,'3L4S':2,'feat8':2};
+const LAYOUT_LBLS  = {
+  1:['Full Screen'],
+  2:['Left','Right'],
+  4:['Top-Left','Top-Right','Bot-Left','Bot-Right'],
+  6:['R1-Left','R1-Center','R1-Right','R2-Left','R2-Center','R2-Right'],
+  '3L4S':['Large: Top-Left','Large: Top-Right','Large: Bot-Left','Small 1 (BR top-L)','Small 2 (BR top-R)','Small 3 (BR bot-L)','Small 4 (BR bot-R)'],
+  'feat8':['Main Screen (Large)','Left Top','Left Middle','Left Bottom','Bottom 1','Bottom 2','Bottom 3','Bottom 4']
+};
+
+function changeLayout(sel) {
+  const form = sel.closest('form');
+  const grid = form.querySelector('.cam-pos-grid');
+  if (!grid) return;
+
+  let layout = sel.value;
+  const n = parseInt(layout, 10);
+  if (!isNaN(n) && String(n) === layout) layout = n;
+
+  const numSlots = LAYOUT_SIZES[layout] || 4;
+  const cols = LAYOUT_COLS[layout] || 2;
+  const lbls = LAYOUT_LBLS[layout] || [];
+
+  // Harvest camera list from existing slot selects
+  const existingSel = grid.querySelector('select[name="cameras"]');
+  let camOpts = '<option value="">(empty)</option>';
+  if (existingSel) {
+    Array.from(existingSel.options).slice(1).forEach(opt => {
+      camOpts += `<option value="${opt.value}">${opt.text}</option>`;
+    });
+  }
+
+  const plId    = form.querySelector('input[name="pl_id"]').value;
+  const stepIdx = form.querySelector('input[name="step_idx"]').value;
+
+  grid.style.gridTemplateColumns = `repeat(${cols},1fr)`;
+  let html = '';
+  for (let pos = 0; pos < numSlots; pos++) {
+    const lbl    = lbls[pos] || `Position ${pos + 1}`;
+    const slotId = `${plId}_${stepIdx}_${pos}`;
+    html += `<div class="cam-pos-cell">
+      <div class="pos-label">${lbl}</div>
+      <select name="cameras" class="form-select form-select-sm"
+              onchange="updateSlotPreview(this)" data-slot="${slotId}">
+        ${camOpts}
+      </select>
+      <img id="pi-${slotId}" src="" class="pos-preview hidden"
+           onerror="this.classList.add('hidden')">
+    </div>`;
+  }
+  grid.innerHTML = html;
+}
+
+// ── Network Tab ─────────────────────────────────────────────────────────────
+function loadNetStatus() {
+  fetch('/api/network/status').then(r=>r.json()).then(d=>{
+    // Ethernet
+    const eb = document.getElementById('eth-ip-badge');
+    if (eb) {
+      eb.textContent = d.eth.ip ? d.eth.ip + ' (' + d.eth.mode + ')' : d.eth.mode;
+      eb.className = 'badge small ' + (d.eth.ip ? 'bg-success' : 'bg-secondary');
+    }
+    const em = document.getElementById('eth-mode');
+    if (em) {
+      em.value = d.eth.mode;
+      ethModeToggle();
+      if (d.eth.mode === 'static') {
+        if (d.eth.address) document.getElementById('eth-ip').value   = d.eth.address.split('/')[0];
+        if (d.eth.gateway) document.getElementById('eth-gw').value   = d.eth.gateway;
+        if (d.eth.dns)     document.getElementById('eth-dns').value  = d.eth.dns;
+        const cidr = d.eth.address ? d.eth.address.split('/')[1] : '24';
+        if (cidr) document.getElementById('eth-mask').value = cidr;
+      }
+    }
+    // WiFi
+    const wb = document.getElementById('wifi-status-badge');
+    if (wb) {
+      const wstate = d.wifi.state;
+      const wssid  = d.wifi.ssid;
+      const wip    = d.wifi.ip;
+      let wlabel = wstate;
+      if (wssid) wlabel = wssid + (wip ? ' • ' + wip : '');
+      wb.textContent = wlabel;
+      wb.className = 'badge small ' + (wstate === 'connected' ? 'bg-success' : wstate === 'disconnected' ? 'bg-secondary' : 'bg-warning');
+    }
+    // AP
+    const ab = document.getElementById('ap-badge');
+    if (ab) {
+      ab.textContent = d.ap.active ? 'Active: ' + (d.ap.ssid||'Hotspot') : 'Off';
+      ab.className = 'badge small ' + (d.ap.active ? 'bg-success' : 'bg-secondary');
+    }
+  }).catch(()=>{});
+}
+
+function ethModeToggle() {
+  const mode = document.getElementById('eth-mode').value;
+  const fields = document.getElementById('eth-static-fields');
+  fields.style.setProperty('display', mode==='static' ? 'flex' : 'none', 'important');
+}
+
+function saveEth() {
+  const mode = document.getElementById('eth-mode').value;
+  const form = document.createElement('form');
+  form.method = 'POST'; form.action = '/api/network/eth';
+  const add = (n,v) => { const i=document.createElement('input'); i.name=n; i.value=v; form.appendChild(i); };
+  add('mode', mode);
+  if (mode === 'static') {
+    add('ip',      document.getElementById('eth-ip').value);
+    add('mask',    document.getElementById('eth-mask').value);
+    add('gateway', document.getElementById('eth-gw').value);
+    add('dns',     document.getElementById('eth-dns').value);
+  }
+  document.body.appendChild(form); form.submit();
+}
+
+function wifiScan() {
+  const sp = document.getElementById('scan-spinner');
+  const list = document.getElementById('wifi-net-list');
+  sp.classList.remove('d-none');
+  list.innerHTML = '<p class="text-muted small">Scanning...</p>';
+  fetch('/api/network/wifi/scan', {method:'POST'}).then(r=>r.json()).then(d=>{
+    sp.classList.add('d-none');
+    if (!d.ok) { list.innerHTML = `<p class="text-danger small">${d.msg}</p>`; return; }
+    if (!d.networks.length) { list.innerHTML = '<p class="text-muted small">No networks found.</p>'; return; }
+    list.innerHTML = d.networks.map(n => {
+      const bars = n.signal > 70 ? '▂▄▆█' : n.signal > 40 ? '▂▄▆_' : n.signal > 20 ? '▂▄__' : '▂___';
+      const lock = n.security && n.security !== '--' ? '🔒 ' : '';
+      const active = n.in_use ? ' border-success' : '';
+      return `<div class="d-flex justify-content-between align-items-center p-2 mb-1 rounded border${active}" style="background:#161b22;cursor:pointer" onclick="selectWifi('${n.ssid.replace(/'/g,"\'")}')">
+        <span><strong style="color:#e6edf3">${lock}${n.ssid}</strong> <small class="text-muted">${n.security||''}</small></span>
+        <span class="text-success small">${bars} ${n.signal}%</span>
+      </div>`;
+    }).join('');
+    loadNetStatus();
+  }).catch(e=>{ sp.classList.add('d-none'); });
+}
+
+function selectWifi(ssid) {
+  document.getElementById('wifi-ssid-sel').value = ssid;
+  document.getElementById('wifi-pw').value = '';
+  document.getElementById('wifi-connect-form').style.display = 'block';
+  document.getElementById('wifi-conn-msg').innerHTML = '';
+  document.getElementById('wifi-pw').focus();
+}
+
+function wifiConnect() {
+  const ssid = document.getElementById('wifi-ssid-sel').value;
+  const pw   = document.getElementById('wifi-pw').value;
+  const sp   = document.getElementById('conn-spinner');
+  const msg  = document.getElementById('wifi-conn-msg');
+  sp.classList.remove('d-none');
+  msg.innerHTML = '<span class="text-muted small">Connecting... (up to 30 s)</span>';
+  const fd = new FormData(); fd.append('ssid', ssid); fd.append('password', pw);
+  fetch('/api/network/wifi/connect', {method:'POST', body: fd}).then(r=>r.json()).then(d=>{
+    sp.classList.add('d-none');
+    msg.innerHTML = `<span class="${d.ok?'text-success':'text-danger'} small">${d.msg}</span>`;
+    if (d.ok) { document.getElementById('wifi-connect-form').style.display='none'; loadNetStatus(); }
+  }).catch(()=>{ sp.classList.add('d-none'); msg.innerHTML='<span class="text-danger small">Request failed</span>'; });
+}
+
+function wifiDisconnect() {
+  if (!confirm('Disconnect WiFi?')) return;
+  fetch('/api/network/wifi/disconnect', {method:'POST'}).then(r=>r.json()).then(d=>{
+    document.getElementById('wifi-msg').innerHTML = `<span class="${d.ok?'text-success':'text-danger'} small">${d.ok?'Disconnected':d.msg}</span>`;
+    loadNetStatus();
+  });
+}
+
+function apStart() {
+  const ssid = document.getElementById('ap-ssid').value;
+  const pw   = document.getElementById('ap-pw').value;
+  const sp   = document.getElementById('ap-start-spinner');
+  const msg  = document.getElementById('ap-msg');
+  sp.classList.remove('d-none');
+  const fd = new FormData(); fd.append('ssid', ssid); fd.append('password', pw);
+  fetch('/api/network/ap/start', {method:'POST', body: fd}).then(r=>r.json()).then(d=>{
+    sp.classList.add('d-none');
+    msg.innerHTML = `<span class="${d.ok?'text-success':'text-danger'} small">${d.msg}</span>`;
+    loadNetStatus();
+  });
+}
+
+function apStop() {
+  const sp  = document.getElementById('ap-stop-spinner');
+  const msg = document.getElementById('ap-msg');
+  sp.classList.remove('d-none');
+  fetch('/api/network/ap/stop', {method:'POST'}).then(r=>r.json()).then(d=>{
+    sp.classList.add('d-none');
+    msg.innerHTML = `<span class="${d.ok?'text-success':'text-danger'} small">${d.ok?'Hotspot stopped':d.msg}</span>`;
+    loadNetStatus();
+  });
+}
+
+// Load network status when the Network tab is clicked
+document.addEventListener('DOMContentLoaded', ()=>{
+  const netTab = document.querySelector('a[href="#network"]');
+  if (netTab) netTab.addEventListener('shown.bs.tab', loadNetStatus);
+});
 
 function testEmail(){
   fetch('/api/test-email',{method:'POST'}).then(r=>r.json())

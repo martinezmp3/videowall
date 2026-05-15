@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import os, subprocess, socket, yaml, psutil, hashlib, secrets, json, smtplib, threading
+import os, re, subprocess, socket, yaml, psutil, hashlib, secrets, json, smtplib, threading
 from pathlib import Path
 from datetime import datetime
 from email.mime.text import MIMEText
@@ -184,7 +184,9 @@ def step_update():
         if pl['id']==pl_id and step_idx < len(pl.get('rotation',[])):
             step = pl['rotation'][step_idx]
             step['name']     = request.form.get('step_name', step['name'])
-            step['layout']   = int(request.form.get('layout', step['layout']))
+            lraw = request.form.get('layout', str(step['layout']))
+            try: step['layout'] = int(lraw)
+            except ValueError: step['layout'] = lraw
             step['duration'] = int(request.form.get('duration', step['duration']))
             step['cameras']  = request.form.getlist('cameras')
             break
@@ -369,6 +371,192 @@ def schedule_update():
     except IndexError:
         flash('Invalid rule')
     return redirect(url_for('config_page')+'#schedule')
+
+# ─── Network management ──────────────────────────────────────────────────────
+ETH_IFACE  = 'enp0s31f6'
+WIFI_IFACE = 'wlp1s0'
+AP_CON     = 'VideoWall-Hotspot'
+
+def _iface_ip(iface):
+    try:
+        out = subprocess.check_output(['ip','addr','show', iface], text=True, stderr=subprocess.DEVNULL)
+        m = re.search(r'inet ([\d./]+)', out)
+        return m.group(1) if m else None
+    except Exception:
+        return None
+
+def _eth_config():
+    try:
+        txt = open('/etc/network/interfaces').read()
+        if f'iface {ETH_IFACE} inet static' in txt:
+            mode = 'static'
+            cfg = {}
+            for key, pat in [('address', r'address\s+([\d./]+)'), ('gateway', r'gateway\s+([\d.]+)'), ('dns', r'dns-nameservers\s+(\S+)')]:
+                m = re.search(pat, txt)
+                if m: cfg[key] = m.group(1)
+            return {'mode': mode, **cfg}
+    except Exception:
+        pass
+    return {'mode': 'dhcp'}
+
+@app.route('/api/network/status')
+@login_required
+def net_status():
+    eth = _eth_config()
+    eth['ip'] = _iface_ip(ETH_IFACE)
+    wifi_ip    = _iface_ip(WIFI_IFACE)
+    wifi_ssid  = None
+    wifi_state = 'unavailable'
+    ap_active  = False
+    ap_ssid    = None
+    try:
+        out = subprocess.check_output(
+            ['nmcli','-t','-f','DEVICE,STATE,CONNECTION','dev'], text=True, stderr=subprocess.DEVNULL)
+        for line in out.splitlines():
+            parts = line.split(':')
+            if parts[0] == WIFI_IFACE:
+                wifi_state = parts[1]
+                wifi_ssid  = parts[2] if len(parts) > 2 and parts[2] != '--' else None
+    except Exception:
+        pass
+    try:
+        out = subprocess.check_output(
+            ['nmcli','-t','-f','NAME,TYPE,DEVICE','con','show','--active'], text=True, stderr=subprocess.DEVNULL)
+        for line in out.splitlines():
+            parts = line.split(':')
+            if len(parts) >= 2 and '802-11-wireless' in parts[1]:
+                name = parts[0]
+                mode_out = subprocess.check_output(
+                    ['nmcli','-t','-f','802-11-wireless.mode','con','show', name],
+                    text=True, stderr=subprocess.DEVNULL)
+                if 'ap' in mode_out.lower():
+                    ap_active = True
+                    ap_ssid   = name
+    except Exception:
+        pass
+    return jsonify({
+        'eth':  {'iface': ETH_IFACE,  'ip': eth.pop('ip'), **eth},
+        'wifi': {'iface': WIFI_IFACE, 'ip': wifi_ip, 'state': wifi_state, 'ssid': wifi_ssid},
+        'ap':   {'active': ap_active, 'ssid': ap_ssid}
+    })
+
+@app.route('/api/network/eth', methods=['POST'])
+@login_required
+def net_eth():
+    mode = request.form.get('mode','dhcp')
+    try:
+        txt = open('/etc/network/interfaces').read()
+    except Exception:
+        txt = 'source /etc/network/interfaces.d/*\nauto lo\niface lo inet loopback\n'
+    block = f'\nallow-hotplug {ETH_IFACE}\n'
+    if mode == 'static':
+        ip  = request.form.get('ip','')
+        mask= request.form.get('mask','24')
+        gw  = request.form.get('gateway','')
+        dns = request.form.get('dns','8.8.8.8')
+        block += f'iface {ETH_IFACE} inet static\n    address {ip}/{mask}\n'
+        if gw:  block += f'    gateway {gw}\n'
+        block += f'    dns-nameservers {dns}\n'
+    else:
+        block += f'iface {ETH_IFACE} inet dhcp\niface {ETH_IFACE} inet6 auto\n'
+    # Replace existing ETH block
+    new_txt = re.sub(
+        rf'\nallow-hotplug {ETH_IFACE}.*?(?=\n(?:allow-hotplug|auto (?!lo)|iface (?!lo)|$))',
+        block, txt, flags=re.DOTALL)
+    if new_txt == txt:
+        new_txt = txt.rstrip() + '\n' + block
+    with open('/etc/network/interfaces','w') as f:
+        f.write(new_txt)
+    # Apply in background so the HTTP response returns first
+    subprocess.Popen(['bash','-c', f'sleep 2 && ifdown {ETH_IFACE} 2>/dev/null; ifup {ETH_IFACE}'])
+    flash('Ethernet settings saved — applying in background (5-10 sec).')
+    return redirect(url_for('config_page')+'#network')
+
+@app.route('/api/network/wifi/scan', methods=['POST'])
+@login_required
+def wifi_scan():
+    try:
+        subprocess.run(['nmcli','dev','wifi','rescan','ifname',WIFI_IFACE],
+                       timeout=8, check=False, stderr=subprocess.DEVNULL)
+        out = subprocess.check_output(
+            ['nmcli','--terse','-f','IN-USE,SSID,SIGNAL,SECURITY','dev','wifi','list','ifname',WIFI_IFACE],
+            text=True, timeout=10, stderr=subprocess.DEVNULL)
+        nets = []
+        seen = set()
+        for line in out.splitlines():
+            parts = line.split(':')
+            if len(parts) < 3: continue
+            ssid = parts[1].strip()
+            if not ssid or ssid in seen: continue
+            seen.add(ssid)
+            nets.append({
+                'in_use':   parts[0].strip() == '*',
+                'ssid':     ssid,
+                'signal':   int(parts[2]) if parts[2].isdigit() else 0,
+                'security': parts[3].strip() if len(parts) > 3 else ''
+            })
+        nets.sort(key=lambda x: -x['signal'])
+        return jsonify({'ok': True, 'networks': nets})
+    except Exception as e:
+        return jsonify({'ok': False, 'msg': str(e)})
+
+@app.route('/api/network/wifi/connect', methods=['POST'])
+@login_required
+def wifi_connect():
+    ssid = request.form.get('ssid','')
+    pw   = request.form.get('password','')
+    if not ssid:
+        return jsonify({'ok': False, 'msg': 'SSID required'})
+    cmd = ['nmcli','dev','wifi','connect', ssid, 'ifname', WIFI_IFACE]
+    if pw: cmd += ['password', pw]
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        ok = r.returncode == 0
+        return jsonify({'ok': ok, 'msg': (r.stdout or r.stderr).strip()})
+    except subprocess.TimeoutExpired:
+        return jsonify({'ok': False, 'msg': 'Connection timed out (30 s)'})
+    except Exception as e:
+        return jsonify({'ok': False, 'msg': str(e)})
+
+@app.route('/api/network/wifi/disconnect', methods=['POST'])
+@login_required
+def wifi_disconnect():
+    try:
+        subprocess.run(['nmcli','dev','disconnect', WIFI_IFACE], timeout=10, check=True, capture_output=True)
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'ok': False, 'msg': str(e)})
+
+@app.route('/api/network/ap/start', methods=['POST'])
+@login_required
+def ap_start():
+    ssid = request.form.get('ssid', 'VideoWall-Setup')
+    pw   = request.form.get('password', 'jjsmart123')
+    if len(pw) < 8:
+        return jsonify({'ok': False, 'msg': 'Password must be at least 8 characters'})
+    subprocess.run(['nmcli','con','delete', AP_CON], capture_output=True)
+    try:
+        r = subprocess.run([
+            'nmcli','dev','wifi','hotspot',
+            'ifname', WIFI_IFACE, 'con-name', AP_CON,
+            'ssid', ssid, 'password', pw, 'band', 'bg'
+        ], capture_output=True, text=True, timeout=20)
+        if r.returncode == 0:
+            return jsonify({'ok': True, 'msg': f'AP "{ssid}" active — connect at 10.42.0.1'})
+        return jsonify({'ok': False, 'msg': (r.stderr or r.stdout).strip()})
+    except Exception as e:
+        return jsonify({'ok': False, 'msg': str(e)})
+
+@app.route('/api/network/ap/stop', methods=['POST'])
+@login_required
+def ap_stop():
+    try:
+        subprocess.run(['nmcli','con','down',   AP_CON], capture_output=True, timeout=10)
+        subprocess.run(['nmcli','con','delete', AP_CON], capture_output=True, timeout=10)
+        return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'ok': False, 'msg': str(e)})
+
 
 if __name__=='__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
