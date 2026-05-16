@@ -208,43 +208,64 @@ d-i preseed/late_command string \\
 d-i finish-install/reboot_in_progress note
 PRESEED
 
-# ── Bootloader — auto-boot into installer with preseed ────────────────────────
+# ── Embed preseed into initrd ─────────────────────────────────────────────────
+# This guarantees the preseed is found at boot before the USB is mounted.
+# Appending a cpio archive to the initrd is safe — the kernel handles multiple
+# concatenated archives and the installer finds preseed.cfg automatically.
+info "Embedding preseed.cfg into initrd..."
+INITRD="$BUILD_DIR/iso-work/install.amd/initrd.gz"
+cp "$BUILD_DIR/iso-work/preseed.cfg" /tmp/preseed.cfg
+(cd /tmp && echo preseed.cfg | cpio -o -H newc 2>/dev/null | gzip -9) >> "$INITRD"
+info "Preseed embedded into initrd."
+
+# ── Bootloader — auto-boot into installer ─────────────────────────────────────
+# Boot params: auto=true + priority=critical is enough — preseed is in the initrd.
+# No preseed/file= needed (that's what caused the "Download preseed URL" prompt).
 info "Patching bootloader for automated install..."
 
-# GRUB (UEFI)
+# GRUB (UEFI) — completely replace grub.cfg so our timeout/default can't be overridden
 GRUB_CFG="$BUILD_DIR/iso-work/boot/grub/grub.cfg"
 if [ -f "$GRUB_CFG" ]; then
-    # Insert VideoWall entry at top, timeout 5 s
-    cat > /tmp/grub-header.cfg << 'GRUBHDR'
+    cat > "$GRUB_CFG" << 'GRUBCFG'
 set default=0
 set timeout=5
-menuentry "Install VideoWall (JJ Smart Solutions)" {
-    set background_color=black
-    linux   /install.amd/vmlinuz auto=true priority=critical \
-            preseed/file=/cdrom/preseed.cfg --- quiet
-    initrd  /install.amd/initrd.gz
+set timeout_style=menu
+
+menuentry "Install VideoWall (JJ Smart Solutions)" --class debian {
+    linux  /install.amd/vmlinuz auto=true priority=critical --- quiet
+    initrd /install.amd/initrd.gz
 }
-GRUBHDR
-    cat /tmp/grub-header.cfg "$GRUB_CFG" > /tmp/grub-new.cfg
-    cp /tmp/grub-new.cfg "$GRUB_CFG"
+
+menuentry "Debian standard install (manual)" {
+    linux  /install.amd/vmlinuz --- quiet
+    initrd /install.amd/initrd.gz
+}
+GRUBCFG
     info "GRUB (UEFI) configured."
 fi
 
-# Isolinux (BIOS)
-ISOLINUX_CFG="$BUILD_DIR/iso-work/isolinux/txt.cfg"
-if [ -f "$ISOLINUX_CFG" ]; then
-    cat > "$ISOLINUX_CFG" << 'ISOLINUX'
+# Isolinux (BIOS) — replace both isolinux.cfg and txt.cfg for full control
+cat > "$BUILD_DIR/iso-work/isolinux/isolinux.cfg" << 'ISOLINUXMAIN'
+path
+include txt.cfg
 default videowall
+prompt 0
+timeout 50
+ISOLINUXMAIN
+
+cat > "$BUILD_DIR/iso-work/isolinux/txt.cfg" << 'ISOLINUX'
 label videowall
-    menu label Install VideoWall ^(JJ Smart Solutions)
+    menu label Install VideoWall (JJ Smart Solutions)
+    menu default
     kernel /install.amd/vmlinuz
-    append initrd=/install.amd/initrd.gz auto=true priority=critical \
-           preseed/file=/cdrom/preseed.cfg --- quiet
+    append initrd=/install.amd/initrd.gz auto=true priority=critical --- quiet
+
+label manual
+    menu label Debian standard install (manual)
+    kernel /install.amd/vmlinuz
+    append initrd=/install.amd/initrd.gz --- quiet
 ISOLINUX
-    # 5-second timeout
-    sed -i 's/^TIMEOUT .*/TIMEOUT 50/' "$BUILD_DIR/iso-work/isolinux/isolinux.cfg" 2>/dev/null || true
-    info "Isolinux (BIOS) configured."
-fi
+info "Isolinux (BIOS) configured."
 
 # ── Recalculate checksums ─────────────────────────────────────────────────────
 info "Recalculating ISO checksums..."
