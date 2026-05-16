@@ -209,7 +209,7 @@ d-i preseed/late_command string \\
     mount -t proc none /target/proc; \\
     mount -o bind /dev /target/dev; \\
     mount -o bind /sys /target/sys; \\
-    chroot /target bash /tmp/vw-postinstall.sh > /target/var/log/vw-install.log 2>&1; \\
+    chroot /target env -i HOME=/root PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin TERM=linux DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true bash /tmp/vw-postinstall.sh > /target/var/log/vw-install.log 2>&1; \\
     umount /target/sys /target/dev /target/proc || true
 
 d-i finish-install/reboot_in_progress note
