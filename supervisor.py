@@ -21,6 +21,7 @@ log = logging.getLogger(__name__)
 
 def apply_log_level(cfg):
     lvl = logging.DEBUG if cfg.get('system',{}).get('debug_log') else logging.INFO
+    if logging.root.level == lvl: return
     logging.root.setLevel(lvl)
     log.info(f"Log level set to {'DEBUG' if lvl == logging.DEBUG else 'INFO'}")
 

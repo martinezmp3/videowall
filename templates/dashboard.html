@@ -51,7 +51,7 @@ footer a:hover{color:#8b949e}
         <div class="card-header">Displays</div>
         <div class="card-body">
           {% if sys.displays %}{% for d in sys.displays %}
-          <div class="mb-2"><span class="badge badge-connected me-1">CONNECTED</span><small class="text-muted">{{ d }}</small></div>
+          <div class="mb-2"><span class="badge badge-connected me-1">CONNECTED</span><small style="color:#c9d1d9;font-size:.8rem">{{ d }}</small></div>
           {% endfor %}{% else %}<span class="text-muted small">No displays detected</span>{% endif %}
         </div>
       </div>

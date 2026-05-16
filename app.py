@@ -398,6 +398,9 @@ def screenshot():
     import time as _time
     out = '/tmp/vw_screenshot.jpg'
     env = {**os.environ, 'DISPLAY': ':0'}
+    # Remove old file first — scrot silently skips overwriting existing files
+    try: os.remove(out)
+    except FileNotFoundError: pass
     # scrot -z captures all screens, -q 85 = JPEG quality
     r = subprocess.run(
         ['scrot', '-z', '-q', '85', out],
