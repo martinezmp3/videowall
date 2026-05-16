@@ -42,8 +42,10 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
 info "Installing Python packages..."
 pip3 install flask pyyaml psutil --break-system-packages -q
 
-# ── 3. Clone / update repo ───────────────────────────────────────────────────
-if [ -d "$INSTALL_DIR/.git" ]; then
+# ── 3. Clone / update repo ─────────────────────────────────────────────────
+if [ "${VIDEOWALL_OFFLINE}" = "1" ] && [ -f "$INSTALL_DIR/supervisor.py" ]; then
+    info "Offline install — using bundled files."
+elif [ -d "$INSTALL_DIR/.git" ]; then
     info "Updating existing VideoWall installation..."
     cd "$INSTALL_DIR" && git pull --ff-only
 elif [ -f "$(dirname "$0")/supervisor.py" ]; then
