@@ -19,10 +19,12 @@ SOURCES
 rm -f /etc/apt/sources.list.d/*.list 2>/dev/null || true
 
 # dpkg-preconfigure uses fd 3 for debconf IPC; this fd is not available in a
-# bare chroot and causes config scripts to hang indefinitely. Skip it entirely.
-echo 'DPkg::Pre-Configure-Options "--skip";' > /etc/apt/apt.conf.d/00no-preconfigure
+# bare chroot and causes config scripts to hang indefinitely.
+# Replace the binary with a no-op so apt never calls the real preconfigure.
 export DEBIAN_FRONTEND=noninteractive
 export DEBCONF_NONINTERACTIVE_SEEN=true
+printf '#!/bin/sh\nexit 0\n' > /usr/sbin/dpkg-preconfigure
+chmod +x /usr/sbin/dpkg-preconfigure
 
 apt-get update -qq
 
