@@ -93,24 +93,30 @@ def logout():
 # ── Pages ─────────────────────────────────────────────────
 def reload_display():
     """Send SIGUSR1 to the supervisor for a live reload (no Xorg restart)."""
-    # Try systemctl MainPID first
+    pid = 0
     try:
         r = subprocess.run(
             ['systemctl', 'show', '-p', 'MainPID', '--value', 'videowall-display'],
-            capture_output=True, text=True)
+            capture_output=True, text=True, timeout=5)
         pid = int(r.stdout.strip())
-        if pid > 0:
-            _signal.kill(pid, _signal.SIGUSR1)
-            return
-    except Exception:
-        pass
-    # Fall back to pgrep — never call ourselves recursively
-    try:
-        r = subprocess.run(['pgrep', '-f', 'supervisor.py'], capture_output=True, text=True)
-        pid = int(r.stdout.strip().split()[0])
-        _signal.kill(pid, _signal.SIGUSR1)
     except Exception as e:
-        log.error(f"reload_display: could not signal supervisor: {e}")
+        app.logger.warning(f"reload_display systemctl lookup failed: {e}")
+
+    if pid <= 0:
+        try:
+            r = subprocess.run(['pgrep', '-f', 'supervisor.py'],
+                               capture_output=True, text=True, timeout=5)
+            pid = int(r.stdout.strip().split()[0])
+        except Exception as e:
+            app.logger.warning(f"reload_display pgrep fallback failed: {e}")
+
+    if pid > 0:
+        try:
+            os.kill(pid, _signal.SIGUSR1)
+        except Exception as e:
+            app.logger.error(f"reload_display kill({pid}, SIGUSR1) failed: {e}")
+    else:
+        app.logger.error("reload_display: supervisor PID not found, reload skipped")
 
 
 @app.route('/')
