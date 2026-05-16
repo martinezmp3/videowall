@@ -3,7 +3,8 @@
 # Sets up the local apt repo and installs all VideoWall components.
 set -e
 LOG="/var/log/videowall-postinstall.log"
-exec > >(tee -a "$LOG") 2>&1
+mkdir -p "$(dirname "$LOG")"
+exec >> "$LOG" 2>&1
 echo "======================================"
 echo " VideoWall Post-Install  $(date)"
 echo "======================================"

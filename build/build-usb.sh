@@ -206,7 +206,11 @@ d-i preseed/late_command string \\
     cp -rp /cdrom/videowall/.   /target/opt/videowall/; \\
     cp /cdrom/vw-postinstall.sh /target/tmp/vw-postinstall.sh; \\
     chmod +x /target/tmp/vw-postinstall.sh; \\
-    chroot /target bash /tmp/vw-postinstall.sh > /target/var/log/vw-install.log 2>&1
+    mount -t proc none /target/proc; \\
+    mount -o bind /dev /target/dev; \\
+    mount -o bind /sys /target/sys; \\
+    chroot /target bash /tmp/vw-postinstall.sh > /target/var/log/vw-install.log 2>&1; \\
+    umount /target/sys /target/dev /target/proc || true
 
 d-i finish-install/reboot_in_progress note
 PRESEED
