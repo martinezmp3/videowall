@@ -36,7 +36,7 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
     network-manager \
     nginx openssl \
     vainfo intel-media-va-driver libva-drm2 libva-x11-2 \
-    net-tools 2>&1 | grep -E "^(Get|Setting|Unpacking|Processing)" | head -20 || true
+    net-tools nmap 2>&1 | grep -E "^(Get|Setting|Unpacking|Processing)" | head -20 || true
 
 # ── 2. Python packages ────────────────────────────────────────────────────────
 info "Installing Python packages..."

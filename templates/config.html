@@ -482,6 +482,12 @@ footer a:hover{color:#8b949e}
           <span id="wifi-status-badge" class="badge bg-secondary small">loading...</span>
         </div>
         <div class="card-body">
+          <div id="no-wifi-alert" class="alert alert-warning d-none py-2 mb-3">
+            <strong>No WiFi adapter detected</strong> on this device.<br>
+            Connect this device to your network via an <strong>Ethernet cable</strong>
+            and use the IP address shown in the Ethernet section above.
+          </div>
+          <div id="wifi-controls">
           <div class="d-flex gap-2 mb-3">
             <button class="btn btn-outline-primary btn-sm" onclick="wifiScan()">
               <span id="scan-spinner" class="spinner-border spinner-border-sm me-1 d-none"></span>
@@ -510,11 +516,12 @@ footer a:hover{color:#8b949e}
             </div>
           </div>
           <div id="wifi-msg" class="mt-2"></div>
+          </div><!-- /#wifi-controls -->
         </div>
       </div>
 
       <!-- AP / Hotspot Mode -->
-      <div class="card mb-3">
+      <div class="card mb-3" id="ap-card">
         <div class="card-header d-flex justify-content-between align-items-center">
           Access Point (Hotspot) Mode
           <span id="ap-badge" class="badge bg-secondary small">loading...</span>
@@ -1019,10 +1026,18 @@ function loadNetStatus() {
       const wstate = d.wifi.state;
       const wssid  = d.wifi.ssid;
       const wip    = d.wifi.ip;
-      let wlabel = wstate;
+      const noWifi = wstate === 'no_adapter';
+      // Toggle no-wifi alert and controls
+      const noWifiAlert = document.getElementById('no-wifi-alert');
+      const wifiControls = document.getElementById('wifi-controls');
+      const apCard = document.getElementById('ap-card');
+      if (noWifiAlert) noWifiAlert.classList.toggle('d-none', !noWifi);
+      if (wifiControls) wifiControls.style.display = noWifi ? 'none' : '';
+      if (apCard) apCard.style.display = noWifi ? 'none' : '';
+      let wlabel = noWifi ? 'No adapter' : wstate;
       if (wssid) wlabel = wssid + (wip ? ' • ' + wip : '');
       wb.textContent = wlabel;
-      wb.className = 'badge small ' + (wstate === 'connected' ? 'bg-success' : wstate === 'disconnected' ? 'bg-secondary' : 'bg-warning');
+      wb.className = 'badge small ' + (wstate === 'connected' ? 'bg-success' : noWifi ? 'bg-danger' : wstate === 'disconnected' ? 'bg-secondary' : 'bg-warning');
     }
     // AP
     const ab = document.getElementById('ap-badge');
@@ -1061,7 +1076,10 @@ function wifiScan() {
   list.innerHTML = '<p class="text-muted small">Scanning...</p>';
   fetch('/api/network/wifi/scan', {method:'POST'}).then(r=>r.json()).then(d=>{
     sp.classList.add('d-none');
-    if (!d.ok) { list.innerHTML = `<p class="text-danger small">${d.msg}</p>`; return; }
+    if (!d.ok) {
+      list.innerHTML = `<div class="alert alert-${d.no_wifi ? 'warning' : 'danger'} py-2">${d.msg}</div>`;
+      return;
+    }
     if (!d.networks.length) { list.innerHTML = '<p class="text-muted small">No networks found.</p>'; return; }
     list.innerHTML = d.networks.map(n => {
       const bars = n.signal > 70 ? '▂▄▆█' : n.signal > 40 ? '▂▄▆_' : n.signal > 20 ? '▂▄__' : '▂___';

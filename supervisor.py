@@ -402,6 +402,14 @@ def write_state_loop():
 
 def show_setup_screen():
     """Display the factory-reset setup screen using feh, fullscreen."""
+    # Regenerate with current IP before displaying
+    try:
+        subprocess.run(
+            ["python3", "/opt/videowall/setup_screen_gen.py"],
+            env={**os.environ, "DISPLAY": ""},
+            capture_output=True, timeout=15)
+    except Exception as e:
+        log.warning(f"Could not regenerate setup screen: {e}")
     screen_path = "/opt/videowall/static/setup_screen.png"
     log.info("Setup mode: showing instruction screen")
     env = {**os.environ, "DISPLAY": ":0"}

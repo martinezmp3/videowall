@@ -500,7 +500,7 @@ def factory_reset():
     ap_cmd = (
         'nmcli con delete VideoWall-Hotspot 2>/dev/null; '
         'nmcli dev wifi hotspot '
-        f'ifname {WIFI_IFACE} con-name VideoWall-Hotspot '
+        f'ifname {WIFI_IFACE or ""} con-name VideoWall-Hotspot '
         'ssid VideoWall-Setup password jjsmart123 band bg'
     )
     subprocess.Popen(['bash', '-c', ap_cmd])
@@ -561,9 +561,42 @@ def monitor_rename():
 
 
 # ─── Network management ──────────────────────────────────────────────────────
-ETH_IFACE  = 'enp0s31f6'
-WIFI_IFACE = 'wlp1s0'
-AP_CON     = 'VideoWall-Hotspot'
+def _detect_ifaces():
+    """Return (eth_iface, wifi_iface) — wifi_iface is None if no WiFi adapter."""
+    eth, wifi = None, None
+    try:
+        out = subprocess.check_output(
+            ['nmcli', '-t', '-f', 'DEVICE,TYPE', 'dev'],
+            text=True, stderr=subprocess.DEVNULL)
+        for line in out.splitlines():
+            parts = line.split(':')
+            if len(parts) < 2:
+                continue
+            dev, typ = parts[0], parts[1]
+            if dev == 'lo':
+                continue
+            if typ == 'ethernet' and not eth:
+                eth = dev
+            elif typ == 'wifi' and not wifi:
+                wifi = dev
+    except Exception:
+        pass
+    if not eth:
+        try:
+            out = subprocess.check_output(
+                ['ip', '-o', 'link'], text=True, stderr=subprocess.DEVNULL)
+            for line in out.splitlines():
+                parts = line.split()
+                if len(parts) > 1:
+                    dev = parts[1].rstrip(':')
+                    if dev != 'lo' and not dev.startswith('wl') and not eth:
+                        eth = dev
+        except Exception:
+            eth = 'eth0'
+    return eth or 'eth0', wifi
+
+ETH_IFACE, WIFI_IFACE = _detect_ifaces()
+AP_CON = 'VideoWall-Hotspot'
 
 def _iface_ip(iface):
     try:
@@ -592,9 +625,9 @@ def _eth_config():
 def net_status():
     eth = _eth_config()
     eth['ip'] = _iface_ip(ETH_IFACE)
-    wifi_ip    = _iface_ip(WIFI_IFACE)
+    wifi_ip    = _iface_ip(WIFI_IFACE) if WIFI_IFACE else None
     wifi_ssid  = None
-    wifi_state = 'unavailable'
+    wifi_state = 'no_adapter' if not WIFI_IFACE else 'unavailable'
     ap_active  = False
     ap_ssid    = None
     try:
@@ -663,6 +696,9 @@ def net_eth():
 @app.route('/api/network/wifi/scan', methods=['POST'])
 @login_required
 def wifi_scan():
+    if not WIFI_IFACE:
+        return jsonify({'ok': False, 'no_wifi': True,
+                        'msg': 'No WiFi adapter detected. Connect this device via Ethernet cable.'})
     try:
         subprocess.run(['nmcli','dev','wifi','rescan','ifname',WIFI_IFACE],
                        timeout=8, check=False, stderr=subprocess.DEVNULL)
@@ -691,6 +727,8 @@ def wifi_scan():
 @app.route('/api/network/wifi/connect', methods=['POST'])
 @login_required
 def wifi_connect():
+    if not WIFI_IFACE:
+        return jsonify({'ok': False, 'msg': 'No WiFi adapter detected on this device.'})
     ssid = request.form.get('ssid','')
     pw   = request.form.get('password','')
     if not ssid:
@@ -711,6 +749,8 @@ def wifi_connect():
 @app.route('/api/network/wifi/disconnect', methods=['POST'])
 @login_required
 def wifi_disconnect():
+    if not WIFI_IFACE:
+        return jsonify({'ok': False, 'msg': 'No WiFi adapter detected.'})
     try:
         subprocess.run(['nmcli','dev','disconnect', WIFI_IFACE], timeout=10, check=True, capture_output=True)
         return jsonify({'ok': True})
