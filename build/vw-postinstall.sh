@@ -17,11 +17,18 @@ cat > /etc/apt/sources.list << 'SOURCES'
 deb [trusted=yes] file:///tmp/vw-packages ./
 SOURCES
 rm -f /etc/apt/sources.list.d/*.list 2>/dev/null || true
+
+# dpkg-preconfigure uses fd 3 for debconf IPC; this fd is not available in a
+# bare chroot and causes config scripts to hang indefinitely. Skip it entirely.
+echo 'DPkg::Pre-Configure-Options "--skip";' > /etc/apt/apt.conf.d/00no-preconfigure
+export DEBIAN_FRONTEND=noninteractive
+export DEBCONF_NONINTERACTIVE_SEEN=true
+
 apt-get update -qq
 
 # ── 2. Install all packages ──────────────────────────────────────────────────
 echo "[2/4] Installing system packages..."
-DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+apt-get install -y --no-install-recommends \
     git curl wget \
     python3 python3-pip python3-pil \
     mpv ffmpeg \
