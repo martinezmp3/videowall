@@ -98,7 +98,10 @@ info "Configuring nginx..."
 cp "$INSTALL_DIR/nginx-videowall.conf" /etc/nginx/sites-available/videowall
 ln -sf /etc/nginx/sites-available/videowall /etc/nginx/sites-enabled/videowall
 rm -f /etc/nginx/sites-enabled/default
-nginx -t -q 2>/dev/null
+if ! nginx -t 2>&1; then
+    echo -e "\033[0;31m[ERROR]\033[0m nginx config test failed — see errors above"
+    exit 1
+fi
 systemctl enable nginx
 systemctl restart nginx
 
