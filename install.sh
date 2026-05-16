@@ -136,8 +136,9 @@ systemctl enable NetworkManager
 systemctl restart NetworkManager 2>/dev/null || true
 
 # ── 11. Generate setup screen ─────────────────────────────────────────────────
-info "Generating setup screen image..."
-DISPLAY="" python3 "$INSTALL_DIR/setup_screen_gen.py" 2>/dev/null \
+info "Generating setup screen images..."
+DISPLAY="" python3 "$INSTALL_DIR/setup_screen_gen.py" 2>/dev/null && \
+    DISPLAY="" python3 "$INSTALL_DIR/gen_second_screen.py" 2>/dev/null \
     && info "Setup screen generated." \
     || warn "Will generate at first boot when display is available."
 

@@ -4,7 +4,8 @@ from datetime import datetime
 from email.mime.text import MIMEText
 
 CONFIG_PATH = "/opt/videowall/config.yml"
-STATE_FILE  = "/opt/videowall/state.json"
+STATE_FILE        = "/opt/videowall/state.json"
+SECOND_SCREEN_IMG = "/opt/videowall/static/second_screen_setup.png"
 
 from logging.handlers import RotatingFileHandler as _RFH
 
@@ -29,6 +30,13 @@ def load_config():
     with open(CONFIG_PATH) as f:
         return yaml.safe_load(f)
 
+
+def save_config(cfg):
+    """Atomically write config to avoid partial-read races."""
+    tmp = CONFIG_PATH + '.tmp'
+    with open(tmp, 'w') as f:
+        yaml.dump(cfg, f, allow_unicode=True, sort_keys=False)
+    os.replace(tmp, CONFIG_PATH)
 
 def build_cam_index(config):
     return {c['id']: c for c in config.get('cameras', [])}
@@ -187,6 +195,38 @@ def check_stream(url, timeout=8):
     except Exception:
         return False
 
+def _auto_add_monitors(config, geometries):
+    """Add stub entries to config for newly connected displays."""
+    existing = len(config.get('monitors', []))
+    added = False
+    for idx in range(existing, len(geometries)):
+        mon_id = idx + 1
+        config.setdefault('monitors', []).append({
+            'id': mon_id, 'name': f'Monitor {mon_id}',
+            'default_playlist': None, 'schedule': []
+        })
+        log.info(f"Auto-detected Monitor {mon_id} — added to config")
+        added = True
+    if added:
+        save_config(config)
+
+def screen_monitor():
+    """Poll xrandr every 15 s; trigger SIGUSR1 when monitor count changes."""
+    last_count = -1
+    while True:
+        time.sleep(15)
+        try:
+            count = len(get_monitor_geometries())
+            if last_count < 0:
+                last_count = count
+                continue
+            if count != last_count:
+                log.info(f"Display change: {last_count} → {count} monitor(s) — reloading")
+                last_count = count
+                os.kill(os.getpid(), signal.SIGUSR1)
+        except Exception as e:
+            log.error(f"Screen monitor: {e}")
+
 rotation_state = {}
 rotation_lock  = threading.Lock()
 
@@ -200,6 +240,7 @@ class MonitorManager:
         self.step_idx       = 0
         self.procs          = []
         self.running        = True
+        self._setup_proc    = None
         self.thread         = threading.Thread(target=self._run, daemon=True)
 
     def start(self): self.thread.start()
@@ -209,12 +250,35 @@ class MonitorManager:
         self._kill_all()
 
     def _kill_all(self):
+        if self._setup_proc and self._setup_proc.poll() is None:
+            try:
+                self._setup_proc.terminate()
+                self._setup_proc.wait(timeout=2)
+            except Exception:
+                pass
+        self._setup_proc = None
         for p in self.procs:
             try: p.terminate(); p.wait(timeout=3)
             except Exception:
                 try: p.kill()
                 except Exception: pass
         self.procs = []
+
+    def _show_setup_image(self):
+        """Display the second-screen instruction image on this monitor's area."""
+        if not os.path.exists(SECOND_SCREEN_IMG):
+            return
+        if self._setup_proc and self._setup_proc.poll() is None:
+            return  # already showing
+        geo = self.geo
+        env = {**os.environ, "DISPLAY": ":0"}
+        self._setup_proc = subprocess.Popen([
+            "mpv", SECOND_SCREEN_IMG,
+            f"--geometry={geo['w']}x{geo['h']}+{geo['x']}+{geo['y']}",
+            "--no-border", "--loop-file=inf", "--keepaspect=no",
+            "--vo=gpu", "--gpu-context=x11egl", "--ontop", "--really-quiet",
+        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env)
+        log.info(f"Monitor {self.config.get('id')}: setup image PID={self._setup_proc.pid}")
 
     def _launch_step(self, step):
         self._kill_all()
@@ -262,6 +326,7 @@ class MonitorManager:
                 self._kill_all()
 
             if not self.active_pl_id or self.active_pl_id not in self.playlist_index:
+                self._show_setup_image()
                 log.warning(f"Monitor {self.config.get('id')}: no active playlist, waiting...")
                 time.sleep(30); continue
 
@@ -385,6 +450,7 @@ def main():
     log.info(f"Monitors: {len(geometries)} — Cameras: {list(cam_index.keys())} — Playlists: {list(playlist_index.keys())}")
 
     threading.Thread(target=watchdog,        args=(config,), daemon=True).start()
+    threading.Thread(target=screen_monitor,                      daemon=True).start()
     threading.Thread(target=write_state_loop, daemon=True).start()
 
     managers = []
@@ -436,6 +502,9 @@ def main():
             cam_index      = build_cam_index(config)
             playlist_index = build_playlist_index(config)
             geometries     = get_monitor_geometries()
+            _auto_add_monitors(config, geometries)
+            cam_index      = build_cam_index(config)
+            playlist_index = build_playlist_index(config)
             feh.terminate()
             if config.get("setup_mode"):
                 log.info("Setup mode active after reload — showing setup screen")

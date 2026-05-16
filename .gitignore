@@ -7,3 +7,6 @@ static/snapshots/*.jpg
 static/snapshots/*.png
 mediamtx.yml
 mediamtx
+config.yml
+state.json
+supervisor.py.bak
