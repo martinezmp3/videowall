@@ -146,6 +146,7 @@ def camera_add():
     else:
         cfg.setdefault('cameras',[]).append(cam)
         save_config(cfg)
+        reload_display()
         threading.Thread(target=take_snap_bg,args=(cam_id,cam['url']),daemon=True).start()
         flash(f"Camera '{cam['name']}' added")
     return redirect(url_for('config_page')+'#cameras')
@@ -159,6 +160,7 @@ def camera_delete():
         for step in pl.get('rotation',[]):
             step['cameras'] = [c for c in step.get('cameras',[]) if c!=cam_id]
     save_config(cfg)
+    reload_display()
     snap = Path(f"{SNAP_DIR}/{cam_id}.jpg")
     if snap.exists(): snap.unlink()
     flash('Camera removed'); return redirect(url_for('config_page')+'#cameras')
@@ -169,7 +171,7 @@ def camera_toggle_sub():
     cfg = load_config(); cam_id = request.form.get('cam_id','')
     for c in cfg.get('cameras',[]):
         if c['id']==cam_id: c['use_substream']=not c.get('use_substream',False); break
-    save_config(cfg); return redirect(url_for('config_page')+'#cameras')
+    save_config(cfg); reload_display(); return redirect(url_for('config_page')+'#cameras')
 
 # ── Playlists ─────────────────────────────────────────────
 @app.route('/api/playlist/add', methods=['POST'])
