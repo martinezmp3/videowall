@@ -1,0 +1,9 @@
+[Unit]
+Description=Restart VideoWall nightly at 3am to flush accumulated memory
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

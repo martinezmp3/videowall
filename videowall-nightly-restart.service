@@ -1,0 +1,7 @@
+[Unit]
+Description=VideoWall nightly memory reset
+After=videowall-display.service videowall-web.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/systemctl restart videowall-display videowall-web

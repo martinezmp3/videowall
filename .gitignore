@@ -2,3 +2,8 @@
 __pycache__/
 *.pyc
 logs/
+state.json
+static/snapshots/*.jpg
+static/snapshots/*.png
+mediamtx.yml
+mediamtx

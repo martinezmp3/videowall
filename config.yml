@@ -66,7 +66,7 @@ monitors:
   schedule: []
 - default_playlist: pl_night
   id: 2
-  name: Monitor 2 (Laptop)
+  name: Monitor 2
   schedule: []
 playlists:
 - id: pl_business
@@ -123,16 +123,14 @@ playlists:
   name: Night Mode
   rotation:
   - cameras:
-    - cam_driveway
-    - cam_frontdoor
-    - frontyard
-    - jorgitocam
-    - cam_trash
     - drivewaytop
-    - doorbellcam
+    - frontyard
     - rickycam
+    - garage
+    - doorbellcam
+    - jorgitocam
     duration: 0
-    layout: feat8
+    layout: 6
     name: All Cameras
 - id: alldayallcameras
   name: All cámaras all day
@@ -147,15 +145,8 @@ playlists:
     - frontyard
     - garage
     - rickycam
-    - jorgitocam
-    - cam_driveway
-    - cam_frontdoor
-    - cam_backyard
-    - cam_trash
-    - doorbellcam
-    - drivewaytop
     duration: 0
-    layout: 16
+    layout: 9
     name: All cameras
 system:
   admin_password_hash: 8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918

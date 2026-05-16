@@ -118,8 +118,10 @@ AUTOLOGIN
 info "Installing and starting services..."
 cp "$INSTALL_DIR/videowall-display.service" /etc/systemd/system/
 cp "$INSTALL_DIR/videowall-web.service" /etc/systemd/system/
+cp "$INSTALL_DIR/videowall-nightly-restart.service" /etc/systemd/system/
+cp "$INSTALL_DIR/videowall-nightly-restart.timer" /etc/systemd/system/
 systemctl daemon-reload
-systemctl enable videowall-display videowall-web
+systemctl enable videowall-display videowall-web videowall-nightly-restart.timer
 
 # ── 10. NetworkManager ────────────────────────────────────────────────────────
 info "Configuring NetworkManager..."
