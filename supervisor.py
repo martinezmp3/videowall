@@ -150,11 +150,11 @@ def launch_mpv(cam, pos):
     cmd = [
         "mpv", url, f"--geometry={geo}",
         "--no-border","--no-osc","--no-input-default-bindings",
-        "--loop=inf","--hwdec=vaapi","--vo=gpu","--gpu-context=x11egl",
+        "--hwdec=vaapi","--vo=gpu","--gpu-context=x11egl",
         "--scale=bilinear","--dscale=bilinear","--cscale=bilinear",
         "--no-audio","--vd-lavc-threads=2",
         "--profile=low-latency","--rtsp-transport=tcp",
-        "--demuxer-readahead-secs=0","--cache=no",
+        "--demuxer-readahead-secs=0.5","--cache=no",
         f"--title={cam['name']}","--ontop","--really-quiet",
     ] + fill_flags
     env = {**os.environ,"DISPLAY":":0","LIBVA_DRIVER_NAME":"iHD"}
