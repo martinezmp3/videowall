@@ -748,5 +748,163 @@ def ap_stop():
         return jsonify({'ok': False, 'msg': str(e)})
 
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Camera Auto-Discovery
+# ─────────────────────────────────────────────────────────────────────────────
+
+RTSP_MAIN_PATHS = [
+    '/stream1', '/live/main', '/Streaming/Channels/101',
+    '/h264Preview_01_main', '/h265Preview_01_main',
+    '/cam/realmonitor?channel=1&subtype=0', '/h264/ch1/main/av_stream',
+    '/stream', '/live', '/ch01/0', '/videoMain', '/live/ch00_0',
+    '/1/h264major', '/mpeg4', '/video.mp4',
+]
+RTSP_SUB_PATHS = [
+    '/stream2', '/live/sub', '/h264Preview_01_sub',
+    '/cam/realmonitor?channel=1&subtype=1', '/sub', '/stream3',
+]
+
+_disc = {'status': 'idle', 'results': []}
+_disc_lock = threading.Lock()
+
+def _local_subnet():
+    try:
+        r = subprocess.run(['ip', 'route'], capture_output=True, text=True)
+        for line in r.stdout.splitlines():
+            parts = line.split()
+            if len(parts) >= 1 and '/' in parts[0] and 'src' in line and 'via' not in line:
+                return parts[0]
+    except Exception:
+        pass
+    return '192.168.1.0/24'
+
+def _known_ips():
+    try:
+        cfg = load_config()
+        ips = set()
+        for c in cfg.get('cameras', []):
+            for key in ('url', 'substream'):
+                u = c.get(key, '')
+                m = re.search(r'@([\d.]+)', u)
+                if m:
+                    ips.add(m.group(1))
+        return ips
+    except Exception:
+        return set()
+
+def _probe_rtsp(ip, username, password, paths, timeout=7):
+    for path in paths:
+        url = f'rtsp://{username}:{password}@{ip}:554{path}'
+        try:
+            r = subprocess.run(
+                ['ffprobe', '-v', 'quiet', '-rtsp_transport', 'tcp',
+                 '-show_entries', 'stream=codec_name,width,height',
+                 '-select_streams', 'v:0', '-of', 'csv=p=0', url],
+                capture_output=True, timeout=timeout)
+            if r.returncode == 0 and r.stdout.strip():
+                parts = r.stdout.decode().strip().split(',')
+                if len(parts) >= 3:
+                    return url, {'codec': parts[0], 'w': int(parts[1]), 'h': int(parts[2])}
+        except Exception:
+            pass
+    return None, None
+
+def _scan_worker():
+    subnet = _local_subnet()
+    with _disc_lock:
+        _disc.update({'status': 'scanning', 'subnet': subnet, 'results': []})
+    try:
+        r = subprocess.run(
+            ['nmap', '-p', '554', '-Pn', '--open', '-T4', '--max-retries', '1', subnet],
+            capture_output=True, text=True, timeout=120)
+        known = _known_ips()
+        found, cur = [], None
+        for line in r.stdout.splitlines():
+            if 'Nmap scan report for' in line:
+                cur = line.split()[-1].strip('()')
+            elif '554/tcp' in line and 'open' in line and cur:
+                if cur not in known:
+                    found.append({'ip': cur, 'state': 'pending'})
+                cur = None
+        with _disc_lock:
+            _disc.update({'status': 'done', 'results': found})
+    except Exception as e:
+        with _disc_lock:
+            _disc.update({'status': 'error', 'error': str(e)})
+
+@app.route('/api/discovery/scan', methods=['POST'])
+@login_required
+def discovery_scan():
+    threading.Thread(target=_scan_worker, daemon=True).start()
+    return jsonify({'ok': True})
+
+@app.route('/api/discovery/status')
+@login_required
+def discovery_status():
+    with _disc_lock:
+        return jsonify(dict(_disc))
+
+@app.route('/api/discovery/probe', methods=['POST'])
+@login_required
+def discovery_probe():
+    ip  = request.form.get('ip', '').strip()
+    usr = request.form.get('username', '').strip()
+    pwd = request.form.get('password', '')
+    if not ip:
+        return jsonify({'ok': False, 'error': 'IP required'})
+    main_url, info = _probe_rtsp(ip, usr, pwd, RTSP_MAIN_PATHS)
+    if not main_url:
+        return jsonify({'ok': False, 'error': 'Cannot connect — check credentials or camera RTSP settings'})
+    sub_url, _ = _probe_rtsp(ip, usr, pwd, RTSP_SUB_PATHS, timeout=5)
+    snap_name = f'disc_{ip.replace(".", "_")}.jpg'
+    snap_path = f'{SNAP_DIR}/{snap_name}'
+    snap_url  = None
+    try:
+        subprocess.run(
+            ['ffmpeg', '-y', '-rtsp_transport', 'tcp', '-i', main_url,
+             '-vframes', '1', '-q:v', '3', '-vf', 'scale=640:-1', snap_path],
+            capture_output=True, timeout=12)
+        if os.path.exists(snap_path):
+            snap_url = f'/static/snapshots/{snap_name}'
+    except Exception:
+        pass
+    return jsonify({
+        'ok':       True,
+        'main_url': main_url,
+        'sub_url':  sub_url or '',
+        'snapshot': snap_url,
+        'codec':    info['codec'].upper(),
+        'width':    info['w'],
+        'height':   info['h'],
+    })
+
+@app.route('/api/discovery/add', methods=['POST'])
+@login_required
+def discovery_add():
+    ip       = request.form.get('ip', '').strip()
+    name     = request.form.get('name', '').strip() or f'camera-{ip}'
+    main_url = request.form.get('main_url', '').strip()
+    sub_url  = request.form.get('sub_url', '').strip()
+    if not ip or not main_url:
+        return jsonify({'ok': False, 'error': 'Missing data'})
+    cfg = load_config()
+    for c in cfg.get('cameras', []):
+        if ip in c.get('url', '') or ip in c.get('substream', ''):
+            return jsonify({'ok': False, 'error': f'Camera at {ip} already exists as "{c["name"]}"'})
+    cam = {
+        'id':            'cam_' + ip.replace('.', '_'),
+        'name':          name,
+        'url':           main_url,
+        'use_substream': False,
+        'fill_mode':     'stretch',
+    }
+    if sub_url:
+        cam['substream'] = sub_url
+    cfg.setdefault('cameras', []).append(cam)
+    save_config(cfg)
+    reload_display()
+    return jsonify({'ok': True, 'cam_id': cam['id'], 'name': name})
+
 if __name__=='__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
