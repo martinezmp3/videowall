@@ -148,8 +148,8 @@ cat > "$BUILD_DIR/iso-work/preseed.cfg" << PRESEED
 d-i debian-installer/locale string en_US.UTF-8
 d-i keyboard-configuration/xkb-keymap select us
 
-# Network — DHCP, hostname
-d-i netcfg/choose_interface select auto
+# Network — skip entirely (offline install, no network needed)
+d-i netcfg/enable boolean false
 d-i netcfg/get_hostname string videowall
 d-i netcfg/get_domain string local
 
@@ -209,18 +209,47 @@ d-i finish-install/reboot_in_progress note
 PRESEED
 
 # ── Embed preseed into initrd ─────────────────────────────────────────────────
-# This guarantees the preseed is found at boot before the USB is mounted.
-# Appending a cpio archive to the initrd is safe — the kernel handles multiple
-# concatenated archives and the installer finds preseed.cfg automatically.
-info "Embedding preseed.cfg into initrd..."
+# Extract the initrd, add preseed.cfg to the root, and repack.
+# The Debian installer's find-preseeds script looks for /preseed.cfg in the
+# initrd filesystem when auto=true is set.  Appending a second cpio stream
+# is unreliable; full extract+repack is the only safe method.
+info "Embedding preseed.cfg into initrd (extract → inject → repack)..."
 INITRD="$BUILD_DIR/iso-work/install.amd/initrd.gz"
-cp "$BUILD_DIR/iso-work/preseed.cfg" /tmp/preseed.cfg
-(cd /tmp && echo preseed.cfg | cpio -o -H newc 2>/dev/null | gzip -9) >> "$INITRD"
+INITRD_WORK="/tmp/initrd-repack"
+rm -rf "$INITRD_WORK"
+mkdir -p "$INITRD_WORK/work"
+
+# Some Debian initrds have an uncompressed early-cpio section (microcode) before
+# the main gzip stream.  Detect the gzip magic offset to handle both cases.
+GZIP_OFFSET=$(python3 -c "
+data = open('$INITRD', 'rb').read()
+i = data.find(b'\x1f\x8b')
+print(i if i >= 0 else 0)
+")
+
+if [ "$GZIP_OFFSET" -gt 0 ]; then
+    dd if="$INITRD" bs=1 count="$GZIP_OFFSET" of="$INITRD_WORK/early.cpio" 2>/dev/null
+    dd if="$INITRD" bs=1 skip="$GZIP_OFFSET" 2>/dev/null \
+        | zcat | (cd "$INITRD_WORK/work" && cpio -id --quiet 2>/dev/null)
+else
+    zcat "$INITRD" | (cd "$INITRD_WORK/work" && cpio -id --quiet 2>/dev/null)
+fi
+
+cp "$BUILD_DIR/iso-work/preseed.cfg" "$INITRD_WORK/work/preseed.cfg"
+
+(cd "$INITRD_WORK/work" && find . | cpio --quiet -o -H newc | gzip -9 > /tmp/initrd-main.gz)
+
+if [ -f "$INITRD_WORK/early.cpio" ]; then
+    cat "$INITRD_WORK/early.cpio" /tmp/initrd-main.gz > "$INITRD"
+else
+    cp /tmp/initrd-main.gz "$INITRD"
+fi
+rm -rf "$INITRD_WORK" /tmp/initrd-main.gz
 info "Preseed embedded into initrd."
 
 # ── Bootloader — auto-boot into installer ─────────────────────────────────────
-# Boot params: auto=true + priority=critical is enough — preseed is in the initrd.
-# No preseed/file= needed (that's what caused the "Download preseed URL" prompt).
+# auto=true activates unattended mode; file=/preseed.cfg tells the installer
+# to load the preseed from the initrd root (where we just placed it).
 info "Patching bootloader for automated install..."
 
 # GRUB (UEFI) — completely replace grub.cfg so our timeout/default can't be overridden
@@ -232,7 +261,7 @@ set timeout=5
 set timeout_style=menu
 
 menuentry "Install VideoWall (JJ Smart Solutions)" --class debian {
-    linux  /install.amd/vmlinuz auto=true priority=critical --- quiet
+    linux  /install.amd/vmlinuz auto=true file=/preseed.cfg priority=critical --- quiet
     initrd /install.amd/initrd.gz
 }
 
@@ -258,7 +287,7 @@ label videowall
     menu label Install VideoWall (JJ Smart Solutions)
     menu default
     kernel /install.amd/vmlinuz
-    append initrd=/install.amd/initrd.gz auto=true priority=critical --- quiet
+    append initrd=/install.amd/initrd.gz auto=true file=/preseed.cfg priority=critical --- quiet
 
 label manual
     menu label Debian standard install (manual)
