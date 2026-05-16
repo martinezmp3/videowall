@@ -196,14 +196,17 @@ d-i grub-installer/with_other_os boolean true
 d-i grub-installer/bootdev string default
 
 # Post-install: copy bundle from USB and run VideoWall installer
+# NOTE: in-target is a shell function in the installer's main session and is NOT
+# available in the subshell that executes late_command (causes exit 127).
+# Use chroot /target directly instead.
 d-i preseed/late_command string \\
-    mkdir -p /target/tmp/vw-packages /target/tmp/vw-pip /target/opt/videowall; \\
+    mkdir -p /target/tmp/vw-packages /target/tmp/vw-pip /target/opt/videowall /target/var/log; \\
     cp -rp /cdrom/vw-packages/. /target/tmp/vw-packages/; \\
     cp -rp /cdrom/vw-pip/.      /target/tmp/vw-pip/; \\
     cp -rp /cdrom/videowall/.   /target/opt/videowall/; \\
     cp /cdrom/vw-postinstall.sh /target/tmp/vw-postinstall.sh; \\
     chmod +x /target/tmp/vw-postinstall.sh; \\
-    in-target bash /tmp/vw-postinstall.sh 2>&1 | tee /var/log/vw-install.log
+    chroot /target bash /tmp/vw-postinstall.sh > /target/var/log/vw-install.log 2>&1
 
 d-i finish-install/reboot_in_progress note
 PRESEED
