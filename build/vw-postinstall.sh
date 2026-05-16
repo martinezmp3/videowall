@@ -10,8 +10,7 @@ echo "======================================"
 
 # ── 1. Local apt repo from bundled packages ──────────────────────────────────
 echo "[1/4] Setting up offline package repository..."
-cd /tmp/vw-packages
-dpkg-scanpackages -m . 2>/dev/null | gzip -9 > Packages.gz
+# Packages.gz was pre-built by build-usb.sh — already present in /tmp/vw-packages
 cat > /etc/apt/sources.list << 'SOURCES'
 # VideoWall offline install — local USB packages only
 deb [trusted=yes] file:///tmp/vw-packages ./

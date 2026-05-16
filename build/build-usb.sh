@@ -18,7 +18,8 @@ VIDEOWALL_DIR="/opt/videowall"
 BUILD_DIR="/tmp/vw-usb-build"
 ISO_CACHE="/tmp/debian-12-netinst.amd64.iso"
 OUTPUT_ISO="/tmp/videowall-installer.iso"
-DEBIAN_ISO_URL="https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/debian-12.11.0-amd64-netinst.iso"
+# Pinned to Debian 12 (Bookworm) — stable base for VideoWall
+DEBIAN_12_ARCHIVE="https://cdimage.debian.org/cdimage/archive"
 
 PACKAGES=(
     git curl wget sudo
@@ -43,14 +44,19 @@ echo -e "${BOLD}=================================================${NC}"
 echo ""
 
 # ── Root password for the installed system ────────────────────────────────────
-echo -e "Set the ${BOLD}secret root password${NC} for VideoWall systems:"
-while true; do
-    read -s -p "  Root password: " ROOT_PASS; echo ""
-    read -s -p "  Confirm:       " ROOT_PASS2; echo ""
-    [[ "$ROOT_PASS" == "$ROOT_PASS2" ]] && break
-    warn "Passwords don't match — try again."
-done
-[[ ${#ROOT_PASS} -lt 8 ]] && error "Password must be at least 8 characters"
+if [ -n "${VW_ROOT_PASS:-}" ]; then
+    ROOT_PASS="$VW_ROOT_PASS"
+    info "Using root password from VW_ROOT_PASS environment variable."
+else
+    echo -e "Set the ${BOLD}secret root password${NC} for VideoWall systems:"
+    while true; do
+        read -s -p "  Root password: " ROOT_PASS; echo ""
+        read -s -p "  Confirm:       " ROOT_PASS2; echo ""
+        [[ "$ROOT_PASS" == "$ROOT_PASS2" ]] && break
+        warn "Passwords don't match — try again."
+    done
+    [[ ${#ROOT_PASS} -lt 8 ]] && error "Password must be at least 8 characters"
+fi
 ROOT_HASH=$(openssl passwd -6 "$ROOT_PASS")
 info "Root password configured."
 echo ""
@@ -58,15 +64,20 @@ echo ""
 # ── Build dependencies ────────────────────────────────────────────────────────
 info "Checking build tools..."
 DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
-    xorriso isolinux syslinux-utils dpkg-dev > /dev/null 2>&1
+    xorriso isolinux syslinux-utils dpkg-dev wget > /dev/null 2>&1
 info "Build tools ready."
 
 # ── Debian ISO ────────────────────────────────────────────────────────────────
 if [ -f "$ISO_CACHE" ]; then
     info "Using cached Debian ISO: $ISO_CACHE"
 else
-    info "Downloading Debian 12 netinstall ISO (~650 MB)..."
-    wget -q --show-progress -O "$ISO_CACHE" "$DEBIAN_ISO_URL"
+    info "Finding latest Debian 12 (Bookworm) netinstall ISO..."
+    ARCHIVE_INDEX=$(wget -qO- "$DEBIAN_12_ARCHIVE/")
+    VER_12=$(echo "$ARCHIVE_INDEX" | grep -o '12\.[0-9]*\.[0-9]*' | sort -V | tail -1)
+    [ -z "$VER_12" ] && VER_12="12.13.0"
+    ISO_URL="${DEBIAN_12_ARCHIVE}/${VER_12}/amd64/iso-cd/debian-${VER_12}-amd64-netinst.iso"
+    info "Downloading debian-${VER_12}-amd64-netinst.iso (~650 MB)..."
+    wget -q --show-progress -O "$ISO_CACHE" "$ISO_URL"
 fi
 
 # ── Build directory ───────────────────────────────────────────────────────────
@@ -99,6 +110,11 @@ apt-get download $DEP_LIST 2>/dev/null || true
 PKG_COUNT=$(ls ./*.deb 2>/dev/null | wc -l)
 info "Downloaded $PKG_COUNT packages."
 
+# Build the package index here (build machine has dpkg-dev; target won't)
+info "Building offline package index..."
+dpkg-scanpackages -m . 2>/dev/null | gzip -9 > Packages.gz
+info "Package index ready."
+
 # ── Download pip wheels ───────────────────────────────────────────────────────
 info "Downloading Python package wheels..."
 pip3 download flask pyyaml psutil -d "$BUILD_DIR/vw-pip" -q
@@ -106,7 +122,7 @@ info "Python wheels ready."
 
 # ── Extract Debian ISO ────────────────────────────────────────────────────────
 info "Extracting Debian installer ISO..."
-mkdir -p /tmp/iso-mnt
+mkdir -p /tmp/iso-mnt "$BUILD_DIR/iso-work"
 mount -o loop,ro "$ISO_CACHE" /tmp/iso-mnt
 cp -rp /tmp/iso-mnt/. "$BUILD_DIR/iso-work/"
 umount /tmp/iso-mnt
