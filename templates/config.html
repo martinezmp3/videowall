@@ -546,9 +546,15 @@ footer a:hover{color:#8b949e}
       <div class="card mb-3">
         <div class="card-header d-flex justify-content-between align-items-center">
           Camera Auto-Discovery
-          <button class="btn btn-primary btn-sm" id="scanBtn" onclick="startScan()">
-            Scan Network
-          </button>
+          <div class="d-flex gap-2 align-items-center">
+            <input id="subnetInput" class="form-control form-control-sm"
+                   style="width:175px;font-size:.8rem"
+                   placeholder="e.g. 10.8.0.0/24"
+                   title="Leave blank to auto-detect your local network">
+            <button class="btn btn-primary btn-sm" id="scanBtn" onclick="startScan()">
+              Scan Network
+            </button>
+          </div>
         </div>
         <div class="card-body">
           <p class="text-muted" style="font-size:.82rem" id="scanStatus">
@@ -575,7 +581,10 @@ function startScan() {
     '<span class="spinner-border spinner-border-sm text-primary me-2"></span>' +
     'Scanning your network for cameras… this takes 20–60 seconds.';
 
-  fetch('/api/discovery/scan', {method:'POST'})
+  const subnet = document.getElementById('subnetInput').value.trim();
+  const sfd = new FormData();
+  if (subnet) sfd.append('subnet', subnet);
+  fetch('/api/discovery/scan', {method:'POST', body: sfd})
     .then(() => { scanPoll = setInterval(pollScan, 3000); });
 }
 

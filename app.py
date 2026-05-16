@@ -810,8 +810,9 @@ def _probe_rtsp(ip, username, password, paths, timeout=7):
             pass
     return None, None
 
-def _scan_worker():
-    subnet = _local_subnet()
+def _scan_worker(subnet=None):
+    if not subnet:
+        subnet = _local_subnet()
     with _disc_lock:
         _disc.update({'status': 'scanning', 'subnet': subnet, 'results': []})
     try:
@@ -836,7 +837,8 @@ def _scan_worker():
 @app.route('/api/discovery/scan', methods=['POST'])
 @login_required
 def discovery_scan():
-    threading.Thread(target=_scan_worker, daemon=True).start()
+    subnet = request.form.get('subnet', '').strip() or None
+    threading.Thread(target=_scan_worker, args=(subnet,), daemon=True).start()
     return jsonify({'ok': True})
 
 @app.route('/api/discovery/status')
