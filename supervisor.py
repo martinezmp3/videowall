@@ -29,6 +29,7 @@ def load_config():
     with open(CONFIG_PATH) as f:
         return yaml.safe_load(f)
 
+
 def build_cam_index(config):
     return {c['id']: c for c in config.get('cameras', [])}
 
@@ -150,6 +151,8 @@ def launch_mpv(cam, pos):
         "mpv", url, f"--geometry={geo}",
         "--no-border","--no-osc","--no-input-default-bindings",
         "--loop=inf","--hwdec=vaapi","--vo=gpu","--gpu-context=x11egl",
+        "--scale=bilinear","--dscale=bilinear","--cscale=bilinear",
+        "--no-audio","--vd-lavc-threads=2",
         "--profile=low-latency","--rtsp-transport=tcp",
         "--demuxer-readahead-secs=0","--cache=no",
         f"--title={cam['name']}","--ontop","--really-quiet",
