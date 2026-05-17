@@ -293,7 +293,10 @@ def schedule_delete():
 def schedule_set_default():
     cfg = load_config(); mon_idx = int(request.form.get('monitor_id',1))-1
     try:
-        cfg['monitors'][mon_idx]['default_playlist'] = request.form.get('playlist','')
+        playlist = request.form.get('playlist','')
+        cfg['monitors'][mon_idx]['default_playlist'] = playlist
+        if playlist:
+            cfg.pop('setup_mode', None)  # exit setup screen when a playlist is assigned
         save_config(cfg); flash('Default playlist updated')
         reload_display()
     except IndexError: flash('Invalid monitor')
@@ -319,6 +322,12 @@ def system_save():
 @app.route('/api/restart', methods=['POST'])
 @login_required
 def restart():
+    cfg = load_config()
+    # If cameras and a playlist are configured, clear setup_mode automatically
+    has_pl = any(m.get('default_playlist') for m in cfg.get('monitors', []))
+    if cfg.get('cameras') and has_pl and cfg.get('setup_mode'):
+        cfg.pop('setup_mode', None)
+        save_config(cfg)
     reload_display()
     return jsonify({'ok':True})
 

@@ -263,6 +263,9 @@ run_step 3 bash -c 'VIDEOWALL_OFFLINE=1 SKIP_START=1 bash /opt/videowall/install
 run_step 4 bash -c '
     rfkill unblock all 2>/dev/null || true
     nmcli radio wifi on 2>/dev/null || true
+    # Allow root SSH login with password (disabled by default in Debian 12)
+    sed -i "s/^#*PermitRootLogin.*/PermitRootLogin yes/" /etc/ssh/sshd_config
+    sed -i "s/^#*PasswordAuthentication.*/PasswordAuthentication yes/" /etc/ssh/sshd_config
     systemctl disable --now ssh 2>/dev/null || true
     systemctl daemon-reload
 '

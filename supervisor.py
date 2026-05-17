@@ -316,6 +316,7 @@ class MonitorManager:
         return 'Default'
 
     def _run(self):
+        last_launched_idx = None  # track which step is actually on screen
         while self.running:
             # Check if playlist should change (schedule)
             new_pl_id = get_active_playlist_id(self.config, self.playlist_index)
@@ -324,6 +325,7 @@ class MonitorManager:
                 self.active_pl_id = new_pl_id
                 self.step_idx = 0
                 self._kill_all()
+                last_launched_idx = None
 
             if not self.active_pl_id or self.active_pl_id not in self.playlist_index:
                 self._show_setup_image()
@@ -339,9 +341,13 @@ class MonitorManager:
                 self.step_idx = 0
 
             step = rotation[self.step_idx]
-            log.info(f"Monitor {self.config.get('id')} [{pl['name']}]: step {self.step_idx+1}/{len(rotation)} '{step.get('name')}'")
-            self._update_state(pl['name'], step, len(rotation))
-            self._launch_step(step)
+
+            # Only kill+relaunch when the step actually changes
+            if self.step_idx != last_launched_idx:
+                log.info(f"Monitor {self.config.get('id')} [{pl['name']}]: step {self.step_idx+1}/{len(rotation)} '{step.get('name')}'")
+                self._update_state(pl['name'], step, len(rotation))
+                self._launch_step(step)
+                last_launched_idx = self.step_idx
 
             duration = step.get('duration', 0)
             if duration > 0:
@@ -352,8 +358,13 @@ class MonitorManager:
                     self._restart_dead(step)
                     new_pl = get_active_playlist_id(self.config, self.playlist_index)
                     if new_pl != self.active_pl_id:
+                        last_launched_idx = None
                         break  # schedule changed, outer loop handles it
                 self.step_idx = (self.step_idx + 1) % len(rotation)
+                # If wrapping to same step (single-step playlist), mark as
+                # already launched so MPV isn't killed needlessly
+                if self.step_idx == last_launched_idx:
+                    self._update_state(pl['name'], step, len(rotation))
             else:
                 # Static — stay on this step, just monitor stream health + schedule
                 while self.running:
@@ -361,6 +372,7 @@ class MonitorManager:
                     self._restart_dead(step)
                     new_pl = get_active_playlist_id(self.config, self.playlist_index)
                     if new_pl != self.active_pl_id:
+                        last_launched_idx = None
                         break
 
 def watchdog(config):
