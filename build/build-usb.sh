@@ -17,7 +17,9 @@ error() { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
 VIDEOWALL_DIR="/opt/videowall"
 BUILD_DIR="/tmp/vw-usb-build"
 ISO_CACHE="${ISO_CACHE:-/tmp/debian-12-netinst.amd64.iso}"
-OUTPUT_ISO="${OUTPUT_ISO:-/tmp/videowall-installer.iso}"
+# When running inside Docker (mount: -v /tmp:/build), /build maps to host /tmp
+[ -d "/build" ] && _ISO_DEFAULT="/build/videowall-installer.iso" || _ISO_DEFAULT="/tmp/videowall-installer.iso"
+OUTPUT_ISO="${OUTPUT_ISO:-$_ISO_DEFAULT}"
 # Pinned to Debian 12 (Bookworm) — stable base for VideoWall
 DEBIAN_12_ARCHIVE="https://cdimage.debian.org/cdimage/archive"
 
@@ -46,6 +48,7 @@ echo ""
 
 # ── Build dependencies ────────────────────────────────────────────────────────
 info "Checking build tools..."
+apt-get update -qq > /dev/null 2>&1
 DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
     xorriso isolinux syslinux-utils dpkg-dev wget \
     cpio gzip python3 python3-pip python3-pil \
