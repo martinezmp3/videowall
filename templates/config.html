@@ -407,6 +407,27 @@ footer a:hover{color:#8b949e}
         </div>
       </div>
 
+      <!-- SSH Access -->
+      <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          Remote Access (SSH)
+          <span id="ssh-badge" class="badge bg-secondary">checking…</span>
+        </div>
+        <div class="card-body">
+          <p style="color:#adbac7;font-size:.85rem;margin-bottom:.75rem">
+            Enable SSH to log into this device remotely via terminal.<br>
+            <strong style="color:#e6edf3">Port 22 — username: root — use the password set during installation.</strong>
+          </p>
+          <div id="ssh-not-installed" style="display:none" class="alert alert-warning py-2" style="font-size:.82rem">
+            openssh-server is not installed. Rebuild the ISO and reinstall to enable SSH.
+          </div>
+          <div id="ssh-controls" style="display:none" class="d-flex gap-2">
+            <button class="btn btn-success btn-sm" id="ssh-enable-btn"  onclick="sshEnable()">Enable SSH</button>
+            <button class="btn btn-danger  btn-sm" id="ssh-disable-btn" onclick="sshDisable()">Disable SSH</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Factory Reset -->
       <div class="card mb-3" style="border-color:#da3633">
         <div class="card-header" style="color:#f85149;border-bottom-color:#da3633">Factory Reset</div>
@@ -599,17 +620,26 @@ function pollScan() {
   fetch('/api/discovery/status')
     .then(r => r.json())
     .then(d => {
-      if (d.status === 'done') {
+      if (d.status === 'probing') {
+        const n = (d.results||[]).length;
+        document.getElementById('scanStatus').innerHTML =
+          '<span class="spinner-border spinner-border-sm text-primary me-2"></span>' +
+          'Found ' + n + ' camera(s) — testing default credentials…';
+        if (d.results && d.results.length) renderResults(d.results);
+      } else if (d.status === 'done') {
         clearInterval(scanPoll);
         document.getElementById('scanBtn').disabled = false;
         document.getElementById('scanBtn').textContent = 'Scan Again';
+        const auto = (d.results||[]).filter(c => c.state === 'auto').length;
+        const pend = (d.results||[]).filter(c => c.state === 'pending').length;
         if (!d.results || d.results.length === 0) {
           document.getElementById('scanStatus').innerHTML =
             '✅ Scan complete — no new cameras found on ' + (d.subnet||'your network') + '.';
         } else {
-          document.getElementById('scanStatus').innerHTML =
-            '✅ Found <strong>' + d.results.length + '</strong> camera(s) on ' +
-            (d.subnet||'your network') + '. Enter credentials to test each one.';
+          let msg = '✅ Found <strong>' + d.results.length + '</strong> camera(s)';
+          if (auto) msg += ' — <strong>' + auto + '</strong> connected automatically';
+          if (pend) msg += ', <strong>' + pend + '</strong> need credentials';
+          document.getElementById('scanStatus').innerHTML = msg + '.';
           renderResults(d.results);
         }
       } else if (d.status === 'error') {
@@ -626,40 +656,71 @@ function renderResults(cameras) {
   const box = document.getElementById('scanResults');
   box.innerHTML = '';
   cameras.forEach(cam => {
+    const key  = cam.ip.replace(/\./g,'_');
     const card = document.createElement('div');
     card.className = 'card mb-3';
-    card.id = 'cam-card-' + cam.ip.replace(/\./g,'_');
-    card.innerHTML = `
-      <div class="card-body">
-        <div class="d-flex align-items-center gap-3 flex-wrap">
-          <div class="fw-bold" style="min-width:130px;font-size:.9rem">
-            📷 ${cam.ip}
+    card.id = 'cam-card-' + key;
+    if (cam.state === 'auto') {
+      const subBadge = cam.sub_url
+        ? '<span class="badge bg-success ms-2">sub-stream found</span>'
+        : '<span class="badge bg-secondary ms-2">main only</span>';
+      const credBadge = cam.auto_pass
+        ? `<span class="badge bg-warning text-dark ms-1">auto: ${cam.auto_user}/${cam.auto_pass}</span>`
+        : `<span class="badge bg-warning text-dark ms-1">auto: no password</span>`;
+      card.innerHTML = `
+        <div class="card-body">
+          <div class="d-flex align-items-center gap-3 flex-wrap">
+            <div class="fw-bold" style="min-width:130px;font-size:.9rem">
+              📷 ${cam.ip}
+            </div>
+            <div>
+              <span class="badge bg-success">Connected</span>
+              ${subBadge}${credBadge}
+              <span class="text-muted ms-2" style="font-size:.8rem">${cam.codec} ${cam.width}×${cam.height}</span>
+            </div>
           </div>
-          <div style="flex:1;min-width:220px">
-            <div class="row g-2 align-items-end">
-              <div class="col">
-                <label>Username</label>
-                <input class="form-control form-control-sm" id="usr-${cam.ip.replace(/\./g,'_')}"
-                       value="admin" placeholder="admin">
-              </div>
-              <div class="col">
-                <label>Password</label>
-                <input class="form-control form-control-sm" type="password"
-                       id="pwd-${cam.ip.replace(/\./g,'_')}" placeholder="password"
-                       onkeydown="if(event.key==='Enter')testCamera('${cam.ip}')">
-              </div>
-              <div class="col-auto">
-                <button class="btn btn-outline-primary btn-sm"
-                        id="testBtn-${cam.ip.replace(/\./g,'_')}"
-                        onclick="testCamera('${cam.ip}')">
-                  Test
-                </button>
+          <div class="d-flex align-items-center gap-3 mt-3 flex-wrap">
+            <div style="flex:1;min-width:200px">
+              <label style="font-size:.82rem">Camera Name</label>
+              <input class="form-control form-control-sm mb-2" id="name-${key}"
+                     value="camera-${cam.ip}" placeholder="camera-${cam.ip}">
+              <button class="btn btn-success btn-sm w-100" id="addBtn-${key}"
+                      onclick="addCamera('${cam.ip}','${cam.main_url}','${cam.sub_url}')">
+                Add Camera
+              </button>
+            </div>
+          </div>
+        </div>`;
+    } else {
+      card.innerHTML = `
+        <div class="card-body">
+          <div class="d-flex align-items-center gap-3 flex-wrap">
+            <div class="fw-bold" style="min-width:130px;font-size:.9rem">
+              📷 ${cam.ip}
+            </div>
+            <div style="flex:1;min-width:220px">
+              <div class="text-muted mb-1" style="font-size:.8rem">Default passwords didn't work — enter credentials:</div>
+              <div class="row g-2 align-items-end">
+                <div class="col">
+                  <label>Username</label>
+                  <input class="form-control form-control-sm" id="usr-${key}" value="admin" placeholder="admin">
+                </div>
+                <div class="col">
+                  <label>Password</label>
+                  <input class="form-control form-control-sm" type="password"
+                         id="pwd-${key}" placeholder="password"
+                         onkeydown="if(event.key==='Enter')testCamera('${cam.ip}')">
+                </div>
+                <div class="col-auto">
+                  <button class="btn btn-outline-primary btn-sm" id="testBtn-${key}"
+                          onclick="testCamera('${cam.ip}')">Test</button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        <div id="result-${cam.ip.replace(/\./g,'_')}" class="mt-3"></div>
-      </div>`;
+          <div id="result-${key}" class="mt-3"></div>
+        </div>`;
+    }
     box.appendChild(card);
   });
 }
@@ -694,10 +755,13 @@ function testCamera(ip) {
         : `<div class="me-3 rounded d-flex align-items-center justify-content-center"
                style="width:140px;height:100px;background:#1c2128;color:#8b949e;font-size:.75rem">
                No snapshot</div>`;
+      const autoCred = d.auto_creds
+        ? ` · <span class="badge bg-warning text-dark">auto: ${d.auto_creds}</span>`
+        : '';
       res.innerHTML = `
         <div class="alert alert-success py-2 mb-2" style="font-size:.82rem">
           ✅ Connected — ${d.codec} ${d.width}×${d.height}
-          ${d.sub_url ? ' · sub-stream found' : ' · no sub-stream'}
+          ${d.sub_url ? ' · sub-stream found' : ' · no sub-stream'}${autoCred}
         </div>
         <div class="d-flex align-items-center gap-3 flex-wrap">
           ${snap}
@@ -719,6 +783,36 @@ function testCamera(ip) {
       res.innerHTML = '<div class="alert alert-danger py-2 mb-0">Connection error</div>';
     });
 }
+
+// ── SSH Management ────────────────────────────────────────────────────────────
+function sshLoad() {
+  fetch('/api/system/ssh/status').then(r => r.json()).then(d => {
+    const badge = document.getElementById('ssh-badge');
+    const ctrl  = document.getElementById('ssh-controls');
+    const ni    = document.getElementById('ssh-not-installed');
+    if (!d.installed) {
+      badge.className = 'badge bg-secondary'; badge.textContent = 'Not installed';
+      ni.style.display = ''; ctrl.style.display = 'none'; return;
+    }
+    ni.style.display = 'none'; ctrl.style.display = '';
+    if (d.active) {
+      badge.className = 'badge bg-success'; badge.textContent = 'Enabled';
+      document.getElementById('ssh-enable-btn').style.display  = 'none';
+      document.getElementById('ssh-disable-btn').style.display = '';
+    } else {
+      badge.className = 'badge bg-danger'; badge.textContent = 'Disabled';
+      document.getElementById('ssh-enable-btn').style.display  = '';
+      document.getElementById('ssh-disable-btn').style.display = 'none';
+    }
+  }).catch(() => {});
+}
+function sshEnable() {
+  fetch('/api/system/ssh/enable', {method:'POST'}).then(() => sshLoad());
+}
+function sshDisable() {
+  fetch('/api/system/ssh/disable', {method:'POST'}).then(() => sshLoad());
+}
+document.addEventListener('DOMContentLoaded', sshLoad);
 
 function addCamera(ip, mainUrl, subUrl) {
   const key  = ip.replace(/\./g,'_');

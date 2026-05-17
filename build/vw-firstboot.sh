@@ -246,7 +246,8 @@ run_step 1 bash -c '
         network-manager \
         nginx openssl \
         vainfo intel-media-va-driver libva-drm2 libva-x11-2 \
-        net-tools nmap fail2ban ufw
+        net-tools nmap fail2ban ufw \
+        openssh-server rfkill
 '
 
 # ── Step 2: Python packages ───────────────────────────────────────────────────
@@ -258,8 +259,13 @@ run_step 2 pip3 install \
 # ── Step 3: VideoWall application ─────────────────────────────────────────────
 run_step 3 bash -c 'VIDEOWALL_OFFLINE=1 SKIP_START=1 bash /opt/videowall/install.sh'
 
-# ── Step 4: Reload systemd unit files ─────────────────────────────────────────
-run_step 4 bash -c 'systemctl daemon-reload'
+# ── Step 4: Finalize — WiFi enable, SSH off, daemon reload ────────────────────
+run_step 4 bash -c '
+    rfkill unblock all 2>/dev/null || true
+    nmcli radio wifi on 2>/dev/null || true
+    systemctl disable --now ssh 2>/dev/null || true
+    systemctl daemon-reload
+'
 
 # ── Cleanup ───────────────────────────────────────────────────────────────────
 rm -rf "$PKG_DIR"

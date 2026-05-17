@@ -31,6 +31,7 @@ PACKAGES=(
     nginx openssl
     vainfo intel-media-va-driver libva-drm2 libva-x11-2
     net-tools nmap fail2ban ufw
+    openssh-server rfkill
     dpkg-dev gzip
     libnginx-mod-http-auth-pam
     libva-x11-2 libva-drm2

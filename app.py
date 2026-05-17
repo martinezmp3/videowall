@@ -790,6 +790,37 @@ def ap_stop():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# SSH Management
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.route('/api/system/ssh/status')
+@login_required
+def ssh_status():
+    installed = os.path.exists('/usr/sbin/sshd')
+    enabled   = subprocess.run(['systemctl', 'is-enabled', 'ssh'],
+                               capture_output=True).returncode == 0
+    active    = subprocess.run(['systemctl', 'is-active',  'ssh'],
+                               capture_output=True).returncode == 0
+    return jsonify({'installed': installed, 'enabled': enabled, 'active': active})
+
+@app.route('/api/system/ssh/enable', methods=['POST'])
+@login_required
+def ssh_enable():
+    if not os.path.exists('/usr/sbin/sshd'):
+        return jsonify({'ok': False, 'msg': 'openssh-server is not installed'})
+    subprocess.run(['systemctl', 'enable', '--now', 'ssh'], capture_output=True)
+    subprocess.run(['ufw', 'allow', '22/tcp'], capture_output=True)
+    return jsonify({'ok': True})
+
+@app.route('/api/system/ssh/disable', methods=['POST'])
+@login_required
+def ssh_disable():
+    subprocess.run(['systemctl', 'disable', '--now', 'ssh'], capture_output=True)
+    subprocess.run(['ufw', 'delete', 'allow', '22/tcp'], capture_output=True)
+    return jsonify({'ok': True})
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Camera Auto-Discovery
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -803,6 +834,18 @@ RTSP_MAIN_PATHS = [
 RTSP_SUB_PATHS = [
     '/stream2', '/live/sub', '/h264Preview_01_sub',
     '/cam/realmonitor?channel=1&subtype=1', '/sub', '/stream3',
+    '/Streaming/Channels/102',
+    '/h264/ch1/sub/av_stream',
+    '/cam/realmonitor?channel=1&subtype=2',
+    '/1/h264minor', '/ch01/1', '/video2',
+]
+
+DEFAULT_PROBE_CREDS = [
+    ('admin', '12345'),
+    ('admin', '123456'),
+    ('admin', 'admin'),
+    ('admin', ''),
+    ('', ''),
 ]
 
 _disc = {'status': 'idle', 'results': []}
@@ -850,6 +893,20 @@ def _probe_rtsp(ip, username, password, paths, timeout=7):
             pass
     return None, None
 
+def _auto_probe(ip):
+    """Try default credentials on a camera IP; return enriched result dict."""
+    for usr, pwd in DEFAULT_PROBE_CREDS:
+        main_url, info = _probe_rtsp(ip, usr, pwd, RTSP_MAIN_PATHS, timeout=5)
+        if main_url and info:
+            sub_url, _ = _probe_rtsp(ip, usr, pwd, RTSP_SUB_PATHS, timeout=4)
+            return {
+                'ip': ip, 'state': 'auto',
+                'main_url': main_url, 'sub_url': sub_url or '',
+                'codec': info['codec'].upper(), 'width': info['w'], 'height': info['h'],
+                'auto_user': usr, 'auto_pass': pwd,
+            }
+    return {'ip': ip, 'state': 'pending'}
+
 def _scan_worker(subnet=None):
     if not subnet:
         subnet = _local_subnet()
@@ -860,14 +917,22 @@ def _scan_worker(subnet=None):
             ['nmap', '-p', '554', '-Pn', '--open', '-T4', '--max-retries', '1', subnet],
             capture_output=True, text=True, timeout=120)
         known = _known_ips()
-        found, cur = [], None
+        ips, cur = [], None
         for line in r.stdout.splitlines():
             if 'Nmap scan report for' in line:
                 cur = line.split()[-1].strip('()')
             elif '554/tcp' in line and 'open' in line and cur:
                 if cur not in known:
-                    found.append({'ip': cur, 'state': 'pending'})
+                    ips.append(cur)
                 cur = None
+        with _disc_lock:
+            _disc.update({'status': 'probing', 'results': [{'ip': ip, 'state': 'pending'} for ip in ips]})
+        found = []
+        for ip in ips:
+            result = _auto_probe(ip)
+            found.append(result)
+            with _disc_lock:
+                _disc['results'] = found[:]
         with _disc_lock:
             _disc.update({'status': 'done', 'results': found})
     except Exception as e:
@@ -896,6 +961,15 @@ def discovery_probe():
     if not ip:
         return jsonify({'ok': False, 'error': 'IP required'})
     main_url, info = _probe_rtsp(ip, usr, pwd, RTSP_MAIN_PATHS)
+    auto_creds = None
+    if not main_url:
+        for au, ap in DEFAULT_PROBE_CREDS:
+            if au == usr and ap == pwd:
+                continue
+            main_url, info = _probe_rtsp(ip, au, ap, RTSP_MAIN_PATHS, timeout=5)
+            if main_url:
+                usr, pwd, auto_creds = au, ap, f'{au}/{ap}' if au else ap
+                break
     if not main_url:
         return jsonify({'ok': False, 'error': 'Cannot connect — check credentials or camera RTSP settings'})
     sub_url, _ = _probe_rtsp(ip, usr, pwd, RTSP_SUB_PATHS, timeout=5)
@@ -912,13 +986,14 @@ def discovery_probe():
     except Exception:
         pass
     return jsonify({
-        'ok':       True,
-        'main_url': main_url,
-        'sub_url':  sub_url or '',
-        'snapshot': snap_url,
-        'codec':    info['codec'].upper(),
-        'width':    info['w'],
-        'height':   info['h'],
+        'ok':        True,
+        'main_url':  main_url,
+        'sub_url':   sub_url or '',
+        'snapshot':  snap_url,
+        'codec':     info['codec'].upper(),
+        'width':     info['w'],
+        'height':    info['h'],
+        'auto_creds': auto_creds,
     })
 
 @app.route('/api/discovery/add', methods=['POST'])
