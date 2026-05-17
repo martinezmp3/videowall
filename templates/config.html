@@ -407,6 +407,30 @@ footer a:hover{color:#8b949e}
         </div>
       </div>
 
+      <!-- Software Updates -->
+      <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          Software Updates
+          <span id="upd-version" class="badge bg-secondary" style="font-family:monospace;font-size:.75rem">—</span>
+        </div>
+        <div class="card-body">
+          <div id="upd-status" class="text-muted mb-3" style="font-size:.85rem">
+            Click <strong>Check for Updates</strong> to compare with the latest version on GitHub.
+          </div>
+          <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-outline-primary btn-sm" id="upd-check-btn" onclick="updCheck()">
+              Check for Updates
+            </button>
+            <button class="btn btn-success btn-sm" id="upd-apply-btn" style="display:none" onclick="updApply()">
+              Update Now
+            </button>
+          </div>
+          <div class="mt-2" style="font-size:.78rem;color:#8b949e">
+            Downloads from GitHub and restarts services. Config and cameras are preserved.
+          </div>
+        </div>
+      </div>
+
       <!-- SSH Access -->
       <div class="card mb-3">
         <div class="card-header d-flex justify-content-between align-items-center">
@@ -812,7 +836,75 @@ function sshEnable() {
 function sshDisable() {
   fetch('/api/system/ssh/disable', {method:'POST'}).then(() => sshLoad());
 }
-document.addEventListener('DOMContentLoaded', sshLoad);
+document.addEventListener('DOMContentLoaded', () => { sshLoad(); updInit(); });
+
+// ── OTA Updates ───────────────────────────────────────────────────────────────
+function updInit() {
+  fetch('/api/system/update/check')
+    .then(r => r.json())
+    .then(d => {
+      const badge = document.getElementById('upd-version');
+      badge.textContent = d.current || '?';
+      badge.className   = 'badge bg-secondary';
+    }).catch(() => {});
+}
+function updCheck() {
+  const btn = document.getElementById('upd-check-btn');
+  const st  = document.getElementById('upd-status');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Checking…';
+  document.getElementById('upd-apply-btn').style.display = 'none';
+  fetch('/api/system/update/check')
+    .then(r => r.json())
+    .then(d => {
+      btn.disabled = false;
+      btn.textContent = 'Check for Updates';
+      const badge = document.getElementById('upd-version');
+      badge.textContent = d.current || '?';
+      if (!d.ok) {
+        st.innerHTML = `<span class="text-warning">⚠ ${d.msg}</span>`;
+        return;
+      }
+      if (d.has_update) {
+        badge.className = 'badge bg-warning text-dark';
+        st.innerHTML = `✅ Update available: <strong>${d.latest}</strong> — ${d.latest_msg}`;
+        document.getElementById('upd-apply-btn').style.display = '';
+      } else {
+        badge.className = 'badge bg-success';
+        st.innerHTML = `✅ Already up to date (${d.current}).`;
+      }
+    }).catch(() => {
+      btn.disabled = false;
+      btn.textContent = 'Check for Updates';
+      st.innerHTML = '<span class="text-danger">Connection error</span>';
+    });
+}
+function updApply() {
+  if (!confirm('Download and apply the update now? Services will restart briefly.')) return;
+  const btn = document.getElementById('upd-apply-btn');
+  const st  = document.getElementById('upd-status');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Updating…';
+  fetch('/api/system/update/apply', {method:'POST'})
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) {
+        document.getElementById('upd-version').textContent  = d.version || '?';
+        document.getElementById('upd-version').className    = 'badge bg-success';
+        st.innerHTML = `✅ ${d.msg}`;
+        btn.style.display = 'none';
+        setTimeout(() => location.reload(), 5000);
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Retry Update';
+        st.innerHTML = `<span class="text-danger">❌ ${d.msg}</span>`;
+      }
+    }).catch(() => {
+      btn.disabled = false;
+      btn.textContent = 'Retry Update';
+      st.innerHTML = '<span class="text-danger">Connection error during update</span>';
+    });
+}
 
 function addCamera(ip, mainUrl, subUrl) {
   const key  = ip.replace(/\./g,'_');

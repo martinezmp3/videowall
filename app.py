@@ -790,6 +790,83 @@ def ap_stop():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# OTA Updates
+# ─────────────────────────────────────────────────────────────────────────────
+
+VW_REPO   = 'martinezmp3/videowall'
+VW_DIR    = '/opt/videowall'
+VW_BRANCH = 'main'
+
+def _current_version():
+    vf = os.path.join(VW_DIR, 'VERSION')
+    try:
+        return open(vf).read().strip()
+    except Exception:
+        return 'unknown'
+
+@app.route('/api/system/update/check')
+@login_required
+def update_check():
+    cur = _current_version()
+    try:
+        r = subprocess.run(
+            ['curl', '-sf', f'https://api.github.com/repos/{VW_REPO}/commits/{VW_BRANCH}'],
+            capture_output=True, text=True, timeout=10)
+        if r.returncode != 0:
+            return jsonify({'ok': False, 'current': cur, 'msg': 'Cannot reach GitHub'})
+        data = json.loads(r.stdout)
+        latest = data['sha'][:7]
+        msg    = data['commit']['message'].split('\n')[0]
+        return jsonify({'ok': True, 'current': cur, 'latest': latest,
+                        'latest_msg': msg, 'has_update': cur != latest})
+    except Exception as e:
+        return jsonify({'ok': False, 'current': cur, 'msg': str(e)})
+
+@app.route('/api/system/update/apply', methods=['POST'])
+@login_required
+def update_apply():
+    try:
+        tarball = '/tmp/vw-update.tar.gz'
+        extract = '/tmp/vw-update-src'
+        url = f'https://github.com/{VW_REPO}/archive/{VW_BRANCH}.tar.gz'
+
+        r = subprocess.run(['curl', '-sL', url, '-o', tarball],
+                           capture_output=True, timeout=120)
+        if r.returncode != 0:
+            return jsonify({'ok': False, 'msg': 'Download failed'})
+
+        subprocess.run(['rm', '-rf', extract], capture_output=True)
+        subprocess.run(['mkdir', '-p', extract], capture_output=True)
+        subprocess.run(['tar', 'xz', '-C', extract, '-f', tarball,
+                        '--strip-components=1'], check=True)
+
+        PRESERVE = {'config.yml', 'state.json'}
+        for item in os.listdir(extract):
+            if item in PRESERVE:
+                continue
+            src = os.path.join(extract, item)
+            dst = os.path.join(VW_DIR, item)
+            if os.path.isdir(src):
+                subprocess.run(['cp', '-r', src, VW_DIR], capture_output=True)
+            else:
+                subprocess.run(['cp', src, dst], capture_output=True)
+
+        subprocess.run(['rm', '-rf', tarball, extract], capture_output=True)
+
+        def _restart():
+            import time; time.sleep(2)
+            subprocess.run(['systemctl', 'restart', 'videowall-web', 'videowall-display'],
+                           capture_output=True)
+        threading.Thread(target=_restart, daemon=True).start()
+
+        new_ver = _current_version()
+        return jsonify({'ok': True, 'version': new_ver,
+                        'msg': f'Updated to {new_ver} — services restarting…'})
+    except Exception as e:
+        return jsonify({'ok': False, 'msg': str(e)})
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # SSH Management
 # ─────────────────────────────────────────────────────────────────────────────
 

@@ -98,7 +98,10 @@ rm -f  "$BUILD_DIR/videowall/state.json"
 rm -f  "$BUILD_DIR/videowall/supervisor.py.bak"
 rm -rf "$BUILD_DIR/videowall/static/snapshots/"
 mkdir -p "$BUILD_DIR/videowall/static/snapshots"
-info "VideoWall files copied."
+# Stamp version from git commit (or build date if git unavailable)
+VW_VERSION=$(git -C "$VIDEOWALL_DIR" rev-parse --short HEAD 2>/dev/null || date +%Y%m%d)
+echo "$VW_VERSION" > "$BUILD_DIR/videowall/VERSION"
+info "VideoWall files copied (version: $VW_VERSION)."
 
 # ── Download apt packages (recursive deps) ────────────────────────────────────
 info "Resolving package dependency tree..."
