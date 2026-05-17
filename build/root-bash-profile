@@ -1,0 +1,9 @@
+#!/bin/bash
+# On first boot, vw-firstboot.service runs the installer on tty1.
+# This profile is a safety net: if the service didn't claim tty1 first
+# (e.g. service ordering edge case), run the installer directly.
+if [ -f /var/lib/videowall-firstboot ]; then
+    if ! systemctl is-active --quiet vw-firstboot.service 2>/dev/null; then
+        exec /opt/videowall/build/vw-firstboot.sh
+    fi
+fi

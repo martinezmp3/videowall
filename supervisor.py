@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import subprocess, threading, time, yaml, os, sys, signal, logging, smtplib, socket, json
+import subprocess, threading, time, yaml, os, sys, signal, logging, smtplib, socket, json, re
 from datetime import datetime
 from email.mime.text import MIMEText
 
@@ -400,39 +400,112 @@ def write_state_loop():
                 json.dump(state, f)
         except Exception: pass
 
-def show_setup_screen():
-    """Display the factory-reset setup screen using feh, fullscreen."""
-    # Regenerate with current IP before displaying
+def _setup_get_eth_ip():
+    """Return the first non-AP global IPv4 address, or None."""
     try:
-        subprocess.run(
-            ["python3", "/opt/videowall/setup_screen_gen.py"],
-            env={**os.environ, "DISPLAY": ""},
-            capture_output=True, timeout=15)
+        out = subprocess.check_output(['ip', '-4', 'addr', 'show', 'scope', 'global'],
+                                      text=True, stderr=subprocess.DEVNULL)
+        for m in re.finditer(r'inet ([\d.]+)', out):
+            ip = m.group(1)
+            if not ip.startswith('10.42.'):
+                return ip
+        return None
+    except Exception:
+        return None
+
+def _setup_ap_active():
+    """Return True if NetworkManager hotspot is up (creates 10.42.0.1)."""
+    try:
+        out = subprocess.check_output(['ip', '-4', 'addr', 'show'],
+                                      text=True, stderr=subprocess.DEVNULL)
+        return '10.42.0.1' in out
+    except Exception:
+        return False
+
+def _setup_try_start_ap():
+    """Attempt to bring up the VideoWall-Setup WiFi hotspot."""
+    if _setup_ap_active():
+        return True
+    log.info("Setup mode: starting WiFi hotspot 'VideoWall-Setup'...")
+    try:
+        r = subprocess.run([
+            'nmcli', 'dev', 'wifi', 'hotspot',
+            'con-name', 'VideoWall-Hotspot',
+            'ssid',     'VideoWall-Setup',
+            'password', 'jjsmart123',
+            'band',     'bg',
+        ], capture_output=True, text=True, timeout=20)
+        time.sleep(3)
+        active = _setup_ap_active()
+        if active:
+            log.info("WiFi AP started: VideoWall-Setup @ 10.42.0.1")
+        else:
+            log.warning(f"WiFi AP did not start (no adapter?): {r.stderr.strip()}")
+        return active
+    except Exception as e:
+        log.warning(f"AP start failed: {e}")
+        return False
+
+def _setup_regen_screen():
+    try:
+        subprocess.run(["python3", "/opt/videowall/setup_screen_gen.py"],
+                       env={**os.environ, "DISPLAY": ""},
+                       capture_output=True, timeout=20)
     except Exception as e:
         log.warning(f"Could not regenerate setup screen: {e}")
+
+def show_setup_screen():
+    """Display the factory-reset setup screen, updating when network state changes."""
     screen_path = "/opt/videowall/static/setup_screen.png"
-    log.info("Setup mode: showing instruction screen")
     env = {**os.environ, "DISPLAY": ":0"}
-    # Solid black background first
+
+    log.info("Setup mode: starting WiFi AP and generating setup screen...")
+    _setup_try_start_ap()
+    _setup_regen_screen()
+
     subprocess.run(["xsetroot", "-solid", "black"], env=env)
-    # Kill any stray mpv
     subprocess.run(["pkill", "-x", "mpv"], capture_output=True)
-    # Show setup screen fullscreen, looping
-    proc = subprocess.Popen(
-        ["feh", "--fullscreen", "--auto-zoom", "--borderless", screen_path],
-        env=env
-    )
-    # Wait until setup_mode is cleared (config rewritten on first login after setup)
+
+    feh_proc = None
+    last_ip = _setup_get_eth_ip()
+    last_ap = _setup_ap_active()
+
+    def _start_feh():
+        nonlocal feh_proc
+        if feh_proc and feh_proc.poll() is None:
+            feh_proc.terminate()
+            try: feh_proc.wait(timeout=3)
+            except Exception: pass
+        feh_proc = subprocess.Popen(
+            ["feh", "--fullscreen", "--auto-zoom", "--borderless", screen_path],
+            env=env)
+
+    _start_feh()
+
     while True:
         time.sleep(10)
         try:
             cfg = load_config()
             if not cfg.get("setup_mode"):
-                log.info("Setup mode cleared, restarting display...")
-                proc.terminate()
+                log.info("Setup mode cleared — restarting display...")
+                if feh_proc and feh_proc.poll() is None:
+                    feh_proc.terminate()
                 return
         except Exception:
             pass
+
+        # Restart feh if it died
+        if feh_proc and feh_proc.poll() is not None:
+            _start_feh()
+
+        # Detect network changes and refresh the screen
+        cur_ip = _setup_get_eth_ip()
+        cur_ap = _setup_ap_active()
+        if cur_ip != last_ip or cur_ap != last_ap:
+            log.info(f"Network change: IP={cur_ip}, AP={cur_ap} — refreshing setup screen")
+            last_ip, last_ap = cur_ip, cur_ap
+            _setup_regen_screen()
+            _start_feh()
 
 def main():
     log.info("VideoWall Supervisor starting...")

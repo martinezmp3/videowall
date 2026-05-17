@@ -16,8 +16,8 @@ error() { echo -e "${RED}[ERROR]${NC} $*"; exit 1; }
 # ── Config ────────────────────────────────────────────────────────────────────
 VIDEOWALL_DIR="/opt/videowall"
 BUILD_DIR="/tmp/vw-usb-build"
-ISO_CACHE="/tmp/debian-12-netinst.amd64.iso"
-OUTPUT_ISO="/tmp/videowall-installer.iso"
+ISO_CACHE="${ISO_CACHE:-/tmp/debian-12-netinst.amd64.iso}"
+OUTPUT_ISO="${OUTPUT_ISO:-/tmp/videowall-installer.iso}"
 # Pinned to Debian 12 (Bookworm) — stable base for VideoWall
 DEBIAN_12_ARCHIVE="https://cdimage.debian.org/cdimage/archive"
 
@@ -43,6 +43,14 @@ echo -e "${BOLD}  JJ Smart Solutions${NC}"
 echo -e "${BOLD}=================================================${NC}"
 echo ""
 
+# ── Build dependencies ────────────────────────────────────────────────────────
+info "Checking build tools..."
+DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+    xorriso isolinux syslinux-utils dpkg-dev wget \
+    cpio gzip python3 python3-pip python3-pil openssl > /dev/null 2>&1
+info "Build tools ready."
+echo ""
+
 # ── Root password for the installed system ────────────────────────────────────
 if [ -n "${VW_ROOT_PASS:-}" ]; then
     ROOT_PASS="$VW_ROOT_PASS"
@@ -60,12 +68,6 @@ fi
 ROOT_HASH=$(openssl passwd -6 "$ROOT_PASS")
 info "Root password configured."
 echo ""
-
-# ── Build dependencies ────────────────────────────────────────────────────────
-info "Checking build tools..."
-DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
-    xorriso isolinux syslinux-utils dpkg-dev wget > /dev/null 2>&1
-info "Build tools ready."
 
 # ── Debian ISO ────────────────────────────────────────────────────────────────
 if [ -f "$ISO_CACHE" ]; then
@@ -117,7 +119,7 @@ info "Package index ready."
 
 # ── Download pip wheels ───────────────────────────────────────────────────────
 info "Downloading Python package wheels..."
-pip3 download flask pyyaml psutil -d "$BUILD_DIR/vw-pip" -q
+pip3 download flask pyyaml psutil qrcode -d "$BUILD_DIR/vw-pip" -q
 info "Python wheels ready."
 
 # ── Extract Debian ISO ────────────────────────────────────────────────────────
@@ -134,7 +136,87 @@ info "Injecting VideoWall bundle into ISO..."
 cp -r "$BUILD_DIR/vw-packages" "$BUILD_DIR/iso-work/"
 cp -r "$BUILD_DIR/vw-pip"      "$BUILD_DIR/iso-work/"
 cp -r "$BUILD_DIR/videowall"   "$BUILD_DIR/iso-work/"
-cp    "$VIDEOWALL_DIR/build/vw-postinstall.sh" "$BUILD_DIR/iso-work/"
+
+# ── Generate GRUB background image ───────────────────────────────────────────
+info "Generating GRUB splash screen..."
+python3 - << 'GRUB_BG_PY'
+try:
+    from PIL import Image, ImageDraw, ImageFont
+except ImportError:
+    import sys; print("  python3-pil not available — skipping GRUB background"); sys.exit(0)
+import os
+
+W, H = 1024, 768
+BG      = (13,  17,  23)
+ACCENT  = (88,  166, 255)
+MUTED   = (60,  70,  85)
+WHITE   = (230, 237, 243)
+DARK    = (22,  27,  34)
+GREEN   = (63,  185, 80)
+
+img  = Image.new('RGB', (W, H), BG)
+draw = ImageDraw.Draw(img)
+
+def font(size, bold=False):
+    candidates = [
+        f'/usr/share/fonts/truetype/dejavu/DejaVuSans{"-Bold" if bold else ""}.ttf',
+        f'/usr/share/fonts/truetype/liberation/LiberationSans{"-Bold" if bold else "-Regular"}.ttf',
+    ]
+    for p in candidates:
+        if os.path.exists(p):
+            return ImageFont.truetype(p, size)
+    return ImageFont.load_default()
+
+def ctext(y, txt, f, color):
+    bb = draw.textbbox((0,0), txt, font=f)
+    x = (W - (bb[2]-bb[0])) // 2
+    draw.text((x, y), txt, font=f, fill=color)
+
+# Gradient-style horizontal bar at top and bottom
+for y in range(6):
+    alpha = int(255 * (1 - y/6))
+    draw.rectangle([(0, y), (W, y)],   fill=ACCENT)
+    draw.rectangle([(0, H-1-y), (W, H-1-y)], fill=ACCENT)
+
+# Subtle grid pattern
+for x in range(0, W, 80):
+    draw.line([(x, 0), (x, H)], fill=(20, 25, 32), width=1)
+for y in range(0, H, 80):
+    draw.line([(0, y), (W, y)], fill=(20, 25, 32), width=1)
+
+# Center card
+cx, cy = W//2, H//2
+cw, ch = 640, 300
+draw.rounded_rectangle(
+    [(cx-cw//2, cy-ch//2), (cx+cw//2, cy+ch//2)],
+    radius=18, fill=DARK, outline=ACCENT, width=2
+)
+
+# Logo text
+f_big   = font(64, bold=True)
+f_sub   = font(28, bold=True)
+f_small = font(20)
+f_hint  = font(18)
+
+ctext(cy - 110, "VideoWall", f_big, WHITE)
+ctext(cy - 30,  "by JJ Smart Solutions", f_sub, ACCENT)
+
+# Divider line inside card
+draw.rectangle([(cx-250, cy+12), (cx+250, cy+13)], fill=MUTED)
+
+ctext(cy + 28,  "Professional Camera Display System", f_small, MUTED)
+
+# Bottom hint
+ctext(H - 60, "Booting installer — please wait...", f_hint, MUTED)
+
+out = '/tmp/vw-usb-build/grub-bg.png'
+img.save(out)
+print(f"  GRUB background saved: {out}")
+GRUB_BG_PY
+
+mkdir -p "$BUILD_DIR/iso-work/boot/grub"
+cp "$BUILD_DIR/grub-bg.png" "$BUILD_DIR/iso-work/boot/grub/videowall-bg.png" 2>/dev/null || true
+info "GRUB background ready."
 
 # ── Generate preseed.cfg ──────────────────────────────────────────────────────
 info "Writing preseed.cfg..."
@@ -195,22 +277,31 @@ d-i grub-installer/only_debian boolean true
 d-i grub-installer/with_other_os boolean true
 d-i grub-installer/bootdev string default
 
-# Post-install: copy bundle from USB and run VideoWall installer
-# NOTE: in-target is a shell function in the installer's main session and is NOT
-# available in the subshell that executes late_command (causes exit 127).
-# Use chroot /target directly instead.
+# Post-install: copy bundle from USB and register the first-boot installer.
+# The heavy VideoWall install (apt packages, pip, services) runs on first boot
+# via vw-firstboot.service so the user sees animated progress on screen.
+# This late_command only copies files — it finishes in ~1-2 minutes.
 d-i preseed/late_command string \\
-    mkdir -p /target/tmp/vw-packages /target/tmp/vw-pip /target/opt/videowall /target/var/log; \\
-    cp -rp /cdrom/vw-packages/. /target/tmp/vw-packages/; \\
-    cp -rp /cdrom/vw-pip/.      /target/tmp/vw-pip/; \\
+    mkdir -p /target/var/lib/videowall-installer/vw-packages \\
+             /target/var/lib/videowall-installer/vw-pip \\
+             /target/opt/videowall \\
+             /target/var/log /target/var/lib \\
+             /target/etc/systemd/system/multi-user.target.wants \\
+             /target/etc/systemd/system/getty@tty1.service.d; \\
+    cp -rp /cdrom/vw-packages/. /target/var/lib/videowall-installer/vw-packages/; \\
+    cp -rp /cdrom/vw-pip/.      /target/var/lib/videowall-installer/vw-pip/; \\
     cp -rp /cdrom/videowall/.   /target/opt/videowall/; \\
-    cp /cdrom/vw-postinstall.sh /target/tmp/vw-postinstall.sh; \\
-    chmod +x /target/tmp/vw-postinstall.sh; \\
-    mount -t proc none /target/proc; \\
-    mount -o bind /dev /target/dev; \\
-    mount -o bind /sys /target/sys; \\
-    chroot /target env -i HOME=/root PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin TERM=linux DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true bash /tmp/vw-postinstall.sh > /target/var/log/vw-install.log 2>&1; \\
-    umount /target/sys /target/dev /target/proc || true
+    chmod +x /target/opt/videowall/build/vw-firstboot.sh; \\
+    cp /target/opt/videowall/build/vw-firstboot.service \\
+       /target/etc/systemd/system/vw-firstboot.service; \\
+    ln -sf /etc/systemd/system/vw-firstboot.service \\
+       /target/etc/systemd/system/multi-user.target.wants/vw-firstboot.service; \\
+    cp /target/opt/videowall/build/getty-autologin.conf \\
+       /target/etc/systemd/system/getty@tty1.service.d/autologin.conf; \\
+    cp /target/opt/videowall/build/root-bash-profile /target/root/.bash_profile; \\
+    chmod +x /target/root/.bash_profile; \\
+    touch /target/var/lib/videowall-firstboot; \\
+    echo "Files copied — first-boot installer ready."
 
 d-i finish-install/reboot_in_progress note
 PRESEED
@@ -259,25 +350,41 @@ info "Preseed embedded into initrd."
 # to load the preseed from the initrd root (where we just placed it).
 info "Patching bootloader for automated install..."
 
-# GRUB (UEFI) — completely replace grub.cfg so our timeout/default can't be overridden
+# GRUB (UEFI) — branded graphical menu
 GRUB_CFG="$BUILD_DIR/iso-work/boot/grub/grub.cfg"
 if [ -f "$GRUB_CFG" ]; then
     cat > "$GRUB_CFG" << 'GRUBCFG'
 set default=0
-set timeout=5
+set timeout=8
 set timeout_style=menu
 
-menuentry "Install VideoWall (JJ Smart Solutions)" --class debian {
+# ── Graphical terminal + background ──────────────────────────────────────────
+if loadfont /boot/grub/fonts/unicode.pf2 ; then
+    set gfxmode=1024x768,800x600,auto
+    insmod gfxterm
+    insmod png
+    terminal_output gfxterm
+    if background_image /boot/grub/videowall-bg.png ; then
+        set color_normal=light-gray/black
+        set color_highlight=white/blue
+    fi
+fi
+
+# ── Menu style ────────────────────────────────────────────────────────────────
+set menu_color_normal=cyan/black
+set menu_color_highlight=black/cyan
+
+menuentry "  Install VideoWall  —  JJ Smart Solutions" --class debian {
     linux  /install.amd/vmlinuz auto=true file=/preseed.cfg priority=critical --- quiet
     initrd /install.amd/initrd.gz
 }
 
-menuentry "Debian standard install (manual)" {
+menuentry "  Debian standard install (manual)" {
     linux  /install.amd/vmlinuz --- quiet
     initrd /install.amd/initrd.gz
 }
 GRUBCFG
-    info "GRUB (UEFI) configured."
+    info "GRUB (UEFI) configured with branded background."
 fi
 
 # Isolinux (BIOS) — replace both isolinux.cfg and txt.cfg for full control

@@ -145,9 +145,16 @@ DISPLAY="" python3 "$INSTALL_DIR/setup_screen_gen.py" 2>/dev/null && \
     || warn "Will generate at first boot when display is available."
 
 # ── 12. Start services now ────────────────────────────────────────────────────
-info "Starting VideoWall services..."
-systemctl restart videowall-web
-systemctl restart videowall-display
+# SKIP_START=1 is set by vw-firstboot.sh so services start after the installer
+# exits rather than mid-install (which would steal the console while the TUI
+# is still displayed).
+if [ "${SKIP_START:-0}" != "1" ]; then
+    info "Starting VideoWall services..."
+    systemctl restart videowall-web
+    systemctl restart videowall-display
+else
+    info "Services enabled — will start when installer exits."
+fi
 
 # ── 13. Show IP address ───────────────────────────────────────────────────────
 sleep 3

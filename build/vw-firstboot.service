@@ -1,0 +1,23 @@
+[Unit]
+Description=VideoWall First Boot Installation
+ConditionPathExists=/var/lib/videowall-firstboot
+After=local-fs.target sysinit.target network.target
+# Own tty1 exclusively — Conflicts stops getty from racing us for the console
+Before=getty@tty1.service videowall-display.service videowall-web.service
+Conflicts=getty@tty1.service
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+RemainAfterExit=no
+ExecStart=/opt/videowall/build/vw-firstboot.sh
+Environment=TERM=linux
+StandardInput=tty
+StandardOutput=tty
+TTYPath=/dev/tty1
+TTYVHangup=yes
+TTYReset=yes
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
