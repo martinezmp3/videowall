@@ -47,7 +47,8 @@ echo ""
 info "Checking build tools..."
 DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
     xorriso isolinux syslinux-utils dpkg-dev wget \
-    cpio gzip python3 python3-pip python3-pil openssl > /dev/null 2>&1
+    cpio gzip python3 python3-pip python3-pil \
+    fonts-dejavu-core openssl > /dev/null 2>&1
 info "Build tools ready."
 echo ""
 
