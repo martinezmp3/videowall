@@ -236,17 +236,19 @@ class MonitorManager:
         self.geo            = geometry
         self.cam_index      = cam_index
         self.playlist_index = playlist_index
-        self.active_pl_id   = None
-        self.step_idx       = 0
-        self.procs          = []
-        self.running        = True
-        self._setup_proc    = None
+        self.active_pl_id    = None
+        self.step_idx        = 0
+        self.procs           = []
+        self.running         = True
+        self._setup_proc     = None
+        self._active_step_sig = None
         self.thread         = threading.Thread(target=self._run, daemon=True)
 
     def start(self): self.thread.start()
 
     def stop(self):
         self.running = False
+        self._active_step_sig = None
         self._kill_all()
 
     def _kill_all(self):
@@ -281,6 +283,10 @@ class MonitorManager:
         log.info(f"Monitor {self.config.get('id')}: setup image PID={self._setup_proc.pid}")
 
     def _launch_step(self, step):
+        sig = (tuple(step.get('cameras', [])), str(step.get('layout', '')))
+        if sig == self._active_step_sig:
+            return  # Same cameras+layout already on screen — skip kill/restart
+        self._active_step_sig = sig
         self._kill_all()
         cams = [self.cam_index[cid] for cid in step.get('cameras',[]) if cid in self.cam_index]
         layout = step.get('layout', max(1, len(cams)))
@@ -324,6 +330,7 @@ class MonitorManager:
                 log.info(f"Monitor {self.config.get('id')}: playlist → '{new_pl_id}'")
                 self.active_pl_id = new_pl_id
                 self.step_idx = 0
+                self._active_step_sig = None
                 self._kill_all()
                 last_launched_idx = None
 
