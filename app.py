@@ -863,9 +863,13 @@ def update_apply():
         subprocess.run(['rm', '-rf', tarball, extract], capture_output=True)
 
         def _restart():
-            import time; time.sleep(2)
-            subprocess.run(['systemctl', 'restart', 'videowall-web', 'videowall-display'],
-                           capture_output=True)
+            import time
+            time.sleep(1)
+            # SIGUSR1 → supervisor re-execs itself from the updated file (no Xorg restart)
+            reload_display()
+            # Restart the web app last so this response is already sent
+            time.sleep(8)
+            subprocess.run(['systemctl', 'restart', 'videowall-web'], capture_output=True)
         threading.Thread(target=_restart, daemon=True).start()
 
         new_ver = _current_version()

@@ -595,31 +595,11 @@ def main():
             m.stop()
         managers.clear()
         time.sleep(0.8)
+        feh.terminate()
 
-        # Reload config and restart
-        try:
-            config         = load_config()
-            cam_index      = build_cam_index(config)
-            playlist_index = build_playlist_index(config)
-            geometries     = get_monitor_geometries()
-            _auto_add_monitors(config, geometries)
-            cam_index      = build_cam_index(config)
-            playlist_index = build_playlist_index(config)
-            feh.terminate()
-            if config.get("setup_mode"):
-                log.info("Setup mode active after reload — showing setup screen")
-                show_setup_screen()
-                os.execv(sys.executable, [sys.executable] + sys.argv)
-                return
-            for i, mon in enumerate(config.get("monitors", [])):
-                if i >= len(geometries):
-                    log.warning(f"Monitor {i+1} not connected, skipping"); continue
-                m = MonitorManager(mon, geometries[i], cam_index, playlist_index)
-                m.start(); managers.append(m)
-            log.info("Reload complete")
-        except Exception as e:
-            log.error(f"Reload failed: {e}")
-            feh.terminate()
+        # Re-exec this process so any updated supervisor.py on disk takes effect
+        log.info("Reload: re-executing supervisor to apply latest code...")
+        os.execv(sys.executable, [sys.executable] + sys.argv)
 
 if __name__ == "__main__":
     main()
